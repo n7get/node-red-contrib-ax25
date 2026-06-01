@@ -1,0 +1,83 @@
+<script type="text/javascript">
+RED.nodes.registerType("decode", {
+  category: "agwpe",
+  color: "#d4edda",
+  defaults: {
+    name: { value: "" },
+    payloadOutput: { value: "string" }
+  },
+  inputs: 1,
+  outputs: 1,
+  icon: "font-awesome/fa-expand",
+  oneditprepare: function () {
+    const mode = this.payloadOutput === "string" ? "string" : "buffer";
+    $("#node-input-payloadOutput").val(mode);
+  },
+  oneditsave: function () {
+    const mode = $("#node-input-payloadOutput").val();
+    this.payloadOutput = mode === "string" ? "string" : "buffer";
+  },
+  label: function () {
+    return this.name || "decode";
+  }
+});
+</script>
+
+<script type="text/html" data-template-name="decode">
+  <div class="form-row">
+    <label for="node-input-name"><i class="fa fa-tag"></i> Name</label>
+    <input type="text" id="node-input-name" />
+  </div>
+  <div class="form-row">
+    <label for="node-input-payloadOutput" style="white-space:nowrap;min-width:110px"><i class="fa fa-exchange"></i> Payload</label>
+    <select id="node-input-payloadOutput" style="width:auto;min-width:120px">
+      <option value="buffer">Buffer</option>
+      <option value="string">String (UTF-8)</option>
+    </select>
+  </div>
+</script>
+
+<script type="text/html" data-help-name="decode">
+  <p>Decodes raw AX.25 bytes into structured fields and frame type classification.
+  Accepts both length-prefixed codec format and standard wire-format frames — the format is auto-detected.</p>
+  <p>Payload Output controls whether <code>msg.payload</code> is emitted as a Buffer or converted to a UTF-8 string.</p>
+
+  <h3>Input</h3>
+  <dl class="message-properties">
+    <dt>payload <span class="property-type">Buffer</span></dt>
+    <dd>Raw AX.25 frame bytes to decode. Must be a Buffer. Passing any other type
+    results in a <code>DECODE_INPUT_INVALID</code> error.</dd>
+    <dt class="optional">agwpePort <span class="property-type">number</span></dt>
+    <dd>AGWPE port byte. Passed through unchanged to the output message.</dd>
+  </dl>
+
+  <h3>Output</h3>
+  <dl class="message-properties">
+    <dt>status <span class="property-type">string</span></dt>
+    <dd><code>"ok"</code> on success; <code>"error"</code> if decoding fails. Check this field first.</dd>
+    <dt>source <span class="property-type">string</span></dt>
+    <dd>When <code>status</code> is <code>"ok"</code>: source callsign (e.g. <code>"N0CALL-1"</code>).</dd>
+    <dt>destination <span class="property-type">string</span></dt>
+    <dd>When <code>status</code> is <code>"ok"</code>: destination callsign.</dd>
+    <dt class="optional">via <span class="property-type">array</span></dt>
+    <dd>When <code>status</code> is <code>"ok"</code>: digipeater list from the AX.25 address chain.
+    Each entry is an object with <code>callsign</code> (string) and <code>hasBeenRepeated</code> (boolean).
+    Only present when decoding wire-format frames that include a via path.</dd>
+    <dt>control <span class="property-type">number</span></dt>
+    <dd>When <code>status</code> is <code>"ok"</code>: raw control field byte value.</dd>
+    <dt>pid <span class="property-type">number</span></dt>
+    <dd>When <code>status</code> is <code>"ok"</code>: protocol identifier byte. Present on I and UI frames; <code>null</code> on S frames.</dd>
+    <dt>frameType <span class="property-type">string</span></dt>
+    <dd>When <code>status</code> is <code>"ok"</code>: AX.25 frame class derived from the control field —
+    <code>"I"</code> (information), <code>"S"</code> (supervisory), or <code>"U"</code> (unnumbered).</dd>
+    <dt>payload <span class="property-type">Buffer | string</span></dt>
+    <dd>When <code>status</code> is <code>"ok"</code>: frame information field. Emitted as a Buffer or
+    UTF-8 string depending on the Payload Output setting.</dd>
+    <dt>agwpePort <span class="property-type">number</span></dt>
+    <dd>When <code>status</code> is <code>"ok"</code>: AGWPE port byte passed through from the input message.</dd>
+    <dt class="optional">errorCode <span class="property-type">string</span></dt>
+    <dd>When <code>status</code> is <code>"error"</code>: <code>DECODE_INPUT_INVALID</code> (payload was not a Buffer) or <code>DECODE_FAILED</code> (frame could not be parsed).</dd>
+    <dt class="optional">errorText <span class="property-type">string</span></dt>
+    <dd>When <code>status</code> is <code>"error"</code>: human-readable description of the error.</dd>
+  </dl>
+</script>

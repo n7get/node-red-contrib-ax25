@@ -1,0 +1,491 @@
+[
+    {
+        "id": "f1e3c30bea1bbe94",
+        "type": "subflow",
+        "name": "Bye",
+        "info": "",
+        "category": "",
+        "in": [
+            {
+                "x": 80,
+                "y": 120,
+                "wires": [
+                    {
+                        "id": "0813fedcec47e075"
+                    }
+                ]
+            }
+        ],
+        "out": [],
+        "env": [],
+        "meta": {},
+        "color": "#DDAA99"
+    },
+    {
+        "id": "0813fedcec47e075",
+        "type": "function",
+        "z": "f1e3c30bea1bbe94",
+        "name": "B",
+        "func": "\"use strict\";\n\nif (!msg.sessionId) {\n  const errorCode = 'NO_SESSION_ID';\n  const errorText = \"sessionID not found\";\n\n  node.error(`[${errorCode}] ${errorText}`);\n\n  return [{\n    status: 'error',\n    errorCode,\n    errorText,\n    msg,\n  }, null];\n}\n\nreturn [null, {\n    sessionId: msg.sessionId,\n    command: 'send',\n    payload: 'B',\n  timeout: 30000,\n}];\n",
+        "outputs": 2,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 210,
+        "y": 120,
+        "wires": [
+            [
+                "637170b1c7227488"
+            ],
+            [
+                "1e49e3218b1dd308"
+            ]
+        ]
+    },
+    {
+        "id": "1e49e3218b1dd308",
+        "type": "send",
+        "z": "f1e3c30bea1bbe94",
+        "name": "",
+        "timeout": "",
+        "waitFor": "",
+        "x": 390,
+        "y": 160,
+        "wires": [
+            [
+                "e3ab85e4461b92a5"
+            ],
+            [
+                "fed58202ceb48e13"
+            ]
+        ]
+    },
+    {
+        "id": "e3ab85e4461b92a5",
+        "type": "function",
+        "z": "f1e3c30bea1bbe94",
+        "name": "check error",
+        "func": "\"use strict\";\n\nif (msg.status === 'error') {\n    node.error(`[${msg.errorCode}] ${msg.errorText}`, msg);\n    return msg;\n}\nreturn null;",
+        "outputs": 1,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 610,
+        "y": 140,
+        "wires": [
+            [
+                "fed58202ceb48e13"
+            ]
+        ]
+    },
+    {
+        "id": "fed58202ceb48e13",
+        "type": "disconnect",
+        "z": "f1e3c30bea1bbe94",
+        "name": "",
+        "x": 810,
+        "y": 180,
+        "wires": [
+            []
+        ]
+    },
+    {
+        "id": "637170b1c7227488",
+        "type": "disconnect",
+        "z": "f1e3c30bea1bbe94",
+        "name": "",
+        "x": 410,
+        "y": 80,
+        "wires": [
+            []
+        ]
+    },
+    {
+        "id": "3c693657989a4c37",
+        "type": "subflow",
+        "name": "Get message list",
+        "info": "",
+        "category": "",
+        "in": [
+            {
+                "x": 91,
+                "y": 96,
+                "wires": [
+                    {
+                        "id": "9cf1412f3b5cb133"
+                    }
+                ]
+            }
+        ],
+        "out": [
+            {
+                "x": 660,
+                "y": 140,
+                "wires": [
+                    {
+                        "id": "9cf1412f3b5cb133",
+                        "port": 0
+                    },
+                    {
+                        "id": "7a0bf977aceb9b9d",
+                        "port": 0
+                    },
+                    {
+                        "id": "9bc838d18c1486f0",
+                        "port": 0
+                    }
+                ]
+            },
+            {
+                "x": 660,
+                "y": 260,
+                "wires": [
+                    {
+                        "id": "7a0bf977aceb9b9d",
+                        "port": 1
+                    }
+                ]
+            }
+        ],
+        "env": [],
+        "meta": {},
+        "color": "#DDAA99"
+    },
+    {
+        "id": "43f63a776d0f7144",
+        "type": "send",
+        "z": "3c693657989a4c37",
+        "name": "",
+        "timeout": "30000",
+        "waitFor": "^ENTER COMMAND",
+        "x": 221,
+        "y": 176,
+        "wires": [
+            [
+                "9bc838d18c1486f0"
+            ],
+            [
+                "7a0bf977aceb9b9d"
+            ]
+        ]
+    },
+    {
+        "id": "9cf1412f3b5cb133",
+        "type": "function",
+        "z": "3c693657989a4c37",
+        "name": "L",
+        "func": "\"use strict\";\n\nif (!msg.sessionId) {\n  const errorCode = 'NO_SESSION_ID';\n  const errorText = \"sessionID not found\";\n\n  node.error(`[${errorCode}] ${errorText}`);\n\n  return [{\n    status: 'error',\n    errorCode,\n    errorText,\n    msg,\n  }, null];\n}\n\nreturn [null, {\n  sessionId: msg.sessionId,\n  command: 'send',\n  payload: 'L',\n  timeout: 30000,\n}];\n",
+        "outputs": 2,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 221,
+        "y": 96,
+        "wires": [
+            [],
+            [
+                "43f63a776d0f7144"
+            ]
+        ]
+    },
+    {
+        "id": "7a0bf977aceb9b9d",
+        "type": "function",
+        "z": "3c693657989a4c37",
+        "name": "Create delete list",
+        "func": "\"use strict\";\n\nfunction kamParse(input) {\n  const regex = /^(\\d+)\\s+(\\S+)\\s+(\\d+)\\s+(\\S+)\\s+(\\S+)\\s+(\\S+)\\s+(\\S+)\\s+(.+)$/;\n\n  const output = input.map( l => {\n    const m = l.match(regex);\n\n    if (m) {\n        return {\n          line: m[0],\n          no: m[1],\n          type: m[2],\n          size: m[3],\n          dest: m[4],\n          src: m[5],\n          date: m[6],\n          time: m[7],\n          subject: m[8],\n        };\n      }\n  }).filter(Boolean);\n\n  return output;\n}\n\nif (!msg.match || !msg.match.startsWith('ENTER COMMAND')) {\n  const errorCode = 'MATCH_NOT_FOUND';\n  const errorText = \"Expected ENTER COMMAND\";\n  \n  node.error(`[${errorCode}] ${errorText}`, msg);\n\n  return [{\n    sessionId: msg.sessionId,\n    status: 'error',\n    errorCode,\n    errorText,\n  }, null];\n}\n\nconst list = kamParse(msg.payload);\n\nreturn [null, {\n  sessionId: msg.sessionId,\n  status: 'ok',\n  list,\n}];\n",
+        "outputs": 2,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 250,
+        "y": 260,
+        "wires": [
+            [],
+            []
+        ]
+    },
+    {
+        "id": "9bc838d18c1486f0",
+        "type": "function",
+        "z": "3c693657989a4c37",
+        "name": "check error",
+        "func": "\"use strict\";\n\nif (msg.status === 'error') {\n    node.error(`[${msg.errorCode}] ${msg.errorText}`, msg);\n    return msg;\n}\nreturn null;",
+        "outputs": 1,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 430,
+        "y": 160,
+        "wires": [
+            []
+        ]
+    },
+    {
+        "id": "cf056828a30c1bd7",
+        "type": "tab",
+        "label": "Delete my messages",
+        "disabled": false,
+        "info": "",
+        "env": []
+    },
+    {
+        "id": "bc16718a70430de0",
+        "type": "inject",
+        "z": "cf056828a30c1bd7",
+        "name": "Create test messages",
+        "props": [],
+        "repeat": "",
+        "crontab": "",
+        "once": false,
+        "onceDelay": 0.1,
+        "topic": "",
+        "x": 160,
+        "y": 60,
+        "wires": [
+            [
+                "da6080e062f7493b"
+            ]
+        ]
+    },
+    {
+        "id": "da6080e062f7493b",
+        "type": "connect",
+        "z": "cf056828a30c1bd7",
+        "client": "663651df790ce7b1",
+        "name": "",
+        "source": "N0CALL",
+        "destination": "N0CALL-1",
+        "via": "",
+        "mode": "line",
+        "timeout": "30000",
+        "waitFor": "^ENTER COMMAND",
+        "x": 400,
+        "y": 60,
+        "wires": [
+            [
+                "5c0277411e1b4539"
+            ],
+            [
+                "b67be17d7c84f184"
+            ]
+        ]
+    },
+    {
+        "id": "b67be17d7c84f184",
+        "type": "subflow:3c693657989a4c37",
+        "z": "cf056828a30c1bd7",
+        "name": "",
+        "x": 170,
+        "y": 180,
+        "wires": [
+            [
+                "2c681d4b6e8d6ae3"
+            ],
+            [
+                "6adb56b31fbf5602"
+            ]
+        ]
+    },
+    {
+        "id": "6adb56b31fbf5602",
+        "type": "function",
+        "z": "cf056828a30c1bd7",
+        "name": "Create delete list",
+        "func": "\"use strict\";\n\nconst list = msg.list;\n\nconst deleteList = list.filter( i => i.src === 'N0CALL' ).map( i => i.no );\n\nflow.set('deleteList', deleteList);\n\nreturn { \n\tsessionId: msg.sessionId,\n};",
+        "outputs": 1,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 350,
+        "y": 260,
+        "wires": [
+            [
+                "bd9ec6de880aa136"
+            ]
+        ]
+    },
+    {
+        "id": "bd9ec6de880aa136",
+        "type": "function",
+        "z": "cf056828a30c1bd7",
+        "name": "K <no>",
+        "func": "\"use strict\";\n\nconst deleteList = flow.get('deleteList');\n\nif (!deleteList || deleteList.length === 0) {\n  flow.set(\"state\", \"done\");\n\n  return [{ sessionId: msg.sessionId }, null];\n}\n\nconst msgNo = deleteList[0];\n\nreturn [null, {\n  command: 'send',\n  sessionId: msg.sessionId,\n  payload: \"K \" + msgNo,\n  waitFor: '^ENTER COMMAND',\n  timeout: 30000,\n}];",
+        "outputs": 2,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 340,
+        "y": 360,
+        "wires": [
+            [
+                "be67b7e42aed5ca3"
+            ],
+            [
+                "2aab72bc68a05429"
+            ]
+        ]
+    },
+    {
+        "id": "2aab72bc68a05429",
+        "type": "send",
+        "z": "cf056828a30c1bd7",
+        "name": "",
+        "timeout": "",
+        "waitFor": "",
+        "x": 510,
+        "y": 380,
+        "wires": [
+            [
+                "07f0218b1bda20af"
+            ],
+            [
+                "4bd41eeb07ccad40"
+            ]
+        ]
+    },
+    {
+        "id": "4bd41eeb07ccad40",
+        "type": "function",
+        "z": "cf056828a30c1bd7",
+        "name": "done?",
+        "func": "\"use strict\";\n\nif (!msg.match || !msg.match.startsWith('ENTER COMMAND')) {\n  node.error(\"Expected ENTER COMMAND\", msg);\n  return [{ sessionId: msg.sessionId }, null];\n}\n\n// TODO: check delete message\n\nconst deleteList = flow.get('deleteList');\n\ndeleteList.shift();\nflow.set('msgList', deleteList);\n\nreturn [null, {\n  sessionId: msg.sessionId,\n}];",
+        "outputs": 2,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 390,
+        "y": 520,
+        "wires": [
+            [
+                "391ebda3a1381299"
+            ],
+            [
+                "bd9ec6de880aa136"
+            ]
+        ]
+    },
+    {
+        "id": "771d2def0287a8f6",
+        "type": "disconnect",
+        "z": "cf056828a30c1bd7",
+        "name": "",
+        "x": 830,
+        "y": 60,
+        "wires": [
+            []
+        ]
+    },
+    {
+        "id": "5c0277411e1b4539",
+        "type": "function",
+        "z": "cf056828a30c1bd7",
+        "name": "check error",
+        "func": "\"use strict\";\n\nif (msg.status === 'error') {\n    node.error(`[${msg.errorCode}] ${msg.errorText}`, msg);\n    return msg;\n}\nreturn null;",
+        "outputs": 1,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 610,
+        "y": 60,
+        "wires": [
+            [
+                "771d2def0287a8f6"
+            ]
+        ]
+    },
+    {
+        "id": "07f0218b1bda20af",
+        "type": "function",
+        "z": "cf056828a30c1bd7",
+        "name": "check error",
+        "func": "\"use strict\";\n\nif (msg.status === 'error') {\n    node.error(`[${msg.errorCode}] ${msg.errorText}`, msg);\n    return msg;\n}\nreturn null;",
+        "outputs": 1,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 730,
+        "y": 380,
+        "wires": [
+            [
+                "f71795f83c061930"
+            ]
+        ]
+    },
+    {
+        "id": "2c681d4b6e8d6ae3",
+        "type": "disconnect",
+        "z": "cf056828a30c1bd7",
+        "name": "",
+        "x": 410,
+        "y": 160,
+        "wires": [
+            []
+        ]
+    },
+    {
+        "id": "f71795f83c061930",
+        "type": "disconnect",
+        "z": "cf056828a30c1bd7",
+        "name": "",
+        "x": 930,
+        "y": 380,
+        "wires": [
+            []
+        ]
+    },
+    {
+        "id": "be67b7e42aed5ca3",
+        "type": "subflow:f1e3c30bea1bbe94",
+        "z": "cf056828a30c1bd7",
+        "name": "",
+        "x": 510,
+        "y": 340,
+        "wires": []
+    },
+    {
+        "id": "391ebda3a1381299",
+        "type": "disconnect",
+        "z": "cf056828a30c1bd7",
+        "name": "",
+        "x": 610,
+        "y": 500,
+        "wires": [
+            []
+        ]
+    },
+    {
+        "id": "663651df790ce7b1",
+        "type": "agwpe-client",
+        "name": "win10 AGWPE",
+        "host": "192.168.68.11",
+        "port": 8000,
+        "callsigns": "N0CALL",
+        "username": "",
+        "password": "",
+        "monitor": false,
+        "raw": true,
+        "reconnect": true,
+        "reconnectDelay": 5000
+    }
+]

@@ -1,0 +1,871 @@
+"use strict";
+
+const Transport = require("../lib/agwpe-client-transport");
+const store = require("../lib/runtime-store");
+const { okEnvelope, errorEnvelope, makeMessageId } = require("../lib/message-utils");
+const {
+  makeRegistrationFrame,
+  makeConnectFrame,
+  makeViaConnectFrame,
+  makeDisconnectFrame,
+  makeDataFrame,
+  makeUiFrame,
+  makeRawFrame,
+  makeMonitorToggleFrame,
+  makeRawToggleFrame
+} = require("../lib/agwpe-frame-builder");
+const { decodeWireAx25 } = require("../lib/ax25-codec");
+
+const DEFAULT_OPEN_HOST = "127.0.0.1";
+const DEFAULT_OPEN_PORT = 8000;
+
+function normalizeSend(node, send) {
+  return send || function (msg) {
+    node.send(msg);
+  };
+}
+
+function hasOwn(object, key) {
+  return Object.prototype.hasOwnProperty.call(object || {}, key);
+}
+
+function pickOpenValue(msg, defaults, key) {
+  if (hasOwn(msg, key)) {
+    return msg[key];
+  }
+  return defaults[key];
+}
+
+function normalizeInteger(value) {
+  if (value === undefined || value === null || value === "") {
+    return value;
+  }
+  if (typeof value === "number") {
+    return Number.isInteger(value) ? value : value;
+  }
+  const parsed = Number(value);
+  return Number.isInteger(parsed) ? parsed : value;
+}
+
+function normalizeBoolean(value) {
+  if (typeof value === "string") {
+    const lowered = value.trim().toLowerCase();
+    if (lowered === "true" || lowered === "1" || lowered === "yes" || lowered === "on") {
+      return true;
+    }
+    if (lowered === "false" || lowered === "0" || lowered === "no" || lowered === "off" || lowered === "") {
+      return false;
+    }
+  }
+  return Boolean(value);
+}
+
+function isUnsetValue(value) {
+  if (value === undefined || value === null) {
+    return true;
+  }
+  if (typeof value === "string") {
+    return value.trim() === "";
+  }
+  return false;
+}
+
+function resolveOpenMessage(context, msg) {
+  const defaults = context.openDefaults || {};
+  const openMessage = {
+    host: pickOpenValue(msg, defaults, "host"),
+    port: normalizeInteger(pickOpenValue(msg, defaults, "port")),
+    callsigns: pickOpenValue(msg, defaults, "callsigns"),
+    username: pickOpenValue(msg, defaults, "username"),
+    password: pickOpenValue(msg, defaults, "password"),
+    monitor: pickOpenValue(msg, defaults, "monitor"),
+    raw: pickOpenValue(msg, defaults, "raw")
+  };
+
+  if (isUnsetValue(openMessage.host)) {
+    openMessage.host = DEFAULT_OPEN_HOST;
+  }
+
+  if (isUnsetValue(openMessage.port)) {
+    openMessage.port = DEFAULT_OPEN_PORT;
+  }
+
+  openMessage.monitor = normalizeBoolean(openMessage.monitor);
+  openMessage.raw = normalizeBoolean(openMessage.raw);
+  return openMessage;
+}
+
+function createRouterHandlers(context) {
+  function routeInboundConnData(source, destination, payload, via) {
+    // Match received frame to a registered connected session.
+    // In a received frame: AX.25 destination = our callsign, AX.25 source = remote callsign.
+    const sessions = context.registry.list(context.instanceId);
+    const session = sessions.find(function (s) {
+      return s.state === "connected" &&
+        s.sourceCallsign.toUpperCase() === destination.toUpperCase() &&
+        s.destinationCallsign.toUpperCase() === source.toUpperCase();
+    });
+    if (!session) return;
+    context.bus.emit("conn-data", {
+      direction: "rx",
+      instanceId: context.instanceId,
+      sessionId: session.sessionId,
+      payload,
+      source,
+      destination,
+      via: via || []
+    });
+  }
+
+  return {
+    onUi: function (frame) {
+      context.bus.emit("ui-data", frame);
+    },
+    onConnected: function (frame) {
+      // Find the pending session this C frame confirms. Accept both callsign orientations:
+      // some TNCs reply with source=remote/destination=us, others echo back source=us/destination=remote.
+      const sessions = context.registry.list(context.instanceId);
+      const session = sessions.find(function (s) {
+        if (s.state !== "connecting") return false;
+        const a = s.sourceCallsign.toUpperCase();
+        const b = s.destinationCallsign.toUpperCase();
+        const x = frame.source.toUpperCase();
+        const y = frame.destination.toUpperCase();
+        return (a === y && b === x) || (a === x && b === y);
+      });
+      if (!session) return;
+      // Resolve which callsign is ours (sourceCallsign) regardless of frame orientation.
+      const ourCallsign = session.sourceCallsign;
+      const remoteCallsign = session.destinationCallsign;
+      context.registry.update(context.instanceId, session.sessionId, { state: "connected" });
+      context.bus.emit("conn-lifecycle", {
+        event: "connected",
+        instanceId: context.instanceId,
+        sessionId: session.sessionId,
+        source: ourCallsign,
+        destination: remoteCallsign,
+        called: remoteCallsign
+      });
+      context.node.send(okEnvelope({
+        instanceId: context.instanceId,
+        event: "connected",
+        sessionId: session.sessionId,
+        source: ourCallsign,
+        destination: remoteCallsign,
+        called: remoteCallsign
+      }));
+    },
+    onDisconnected: function (frame) {
+      // Find the session this d frame terminates. Match either direction for robustness.
+      const sessions = context.registry.list(context.instanceId);
+      const session = sessions.find(function (s) {
+        const a = s.sourceCallsign.toUpperCase();
+        const b = s.destinationCallsign.toUpperCase();
+        const x = frame.source.toUpperCase();
+        const y = frame.destination.toUpperCase();
+        return (a === y && b === x) || (a === x && b === y);
+      });
+      if (!session) return;
+      context.registry.remove(context.instanceId, session.sessionId);
+      // Clear K-frame dedup state so a future reconnect starts fresh.
+      if (context._kFrameDedup) {
+        const dedupKey =
+          session.destinationCallsign.toUpperCase() + ">" + session.sourceCallsign.toUpperCase();
+        context._kFrameDedup.delete(dedupKey);
+      }
+      context.bus.emit("conn-lifecycle", {
+        event: "disconnected",
+        instanceId: context.instanceId,
+        sessionId: session.sessionId,
+        source: session.sourceCallsign,
+        destination: session.destinationCallsign
+      });
+      context.node.send(okEnvelope({
+        instanceId: context.instanceId,
+        event: "disconnected",
+        sessionId: session.sessionId,
+        source: session.sourceCallsign,
+        destination: session.destinationCallsign
+      }));
+    },
+    onConnectedBySession: function (sessionId, frame) {
+      context.bus.emit("conn-data", frame);
+    },
+    onConnectedData: function (frame) {
+      routeInboundConnData(frame.source, frame.destination, frame.payload, frame.via);
+    },
+    onMonitor: function (frame) {
+      context.bus.emit("monitor-data", frame);
+    },
+    onRaw: function (frame) {
+      context.bus.emit("raw-data", frame);
+    },
+    onLifecycle: function (frame) {
+      context.bus.emit("conn-lifecycle", frame);
+    }
+  };
+}
+
+function validateOpen(msg) {
+  if (!msg.host || !Number.isInteger(msg.port)) {
+    return "OPEN_REQUIRES_HOST_PORT";
+  }
+  if ((msg.username && !msg.password) || (!msg.username && msg.password)) {
+    return "OPEN_REQUIRES_USER_AND_PASSWORD";
+  }
+  return null;
+}
+
+function isConnSessionCommand(command) {
+  return command === "send";
+}
+
+function normalizeCallsigns(callsigns) {
+  if (typeof callsigns === "string") {
+    return [callsigns];
+  }
+  if (Array.isArray(callsigns)) {
+    return callsigns.slice();
+  }
+  return [];
+}
+
+function makeAgwpeRegistrationFrame(callsign) {
+  return makeRegistrationFrame(callsign);
+}
+
+function decodeAgwpeCallsign(frame, offset) {
+  const raw = frame.subarray(offset, offset + 10);
+  const nul = raw.indexOf(0x00);
+  const end = nul >= 0 ? nul : raw.length;
+  return raw.subarray(0, end).toString("ascii").trim();
+}
+
+function decodeInboundAgwpeFrame(instanceId, frame) {
+  const dataKind = String.fromCharCode(frame.readUInt8(4));
+  const source = decodeAgwpeCallsign(frame, 8);
+  const destination = decodeAgwpeCallsign(frame, 18);
+  const payloadLen = frame.readUInt32LE(28);
+  const payload = frame.subarray(36, 36 + payloadLen);
+
+  // AGWPE sends incoming unproto/UI traffic as 'U' frames.
+  if (dataKind === "U") {
+    return {
+      kind: "ui",
+      direction: "rx",
+      instanceId,
+      source,
+      destination,
+      payload,
+      messageId: makeMessageId("ui"),
+      chunkIndex: 0,
+      chunkCount: 1
+    };
+  }
+
+  // AGWPE sends a 'C' frame to confirm an inbound or outbound connection is established.
+  if (dataKind === "C") {
+    return {
+      kind: "connected",
+      direction: "rx",
+      instanceId,
+      source,
+      destination,
+      payload
+    };
+  }
+
+  // AGWPE sends a 'd' frame when a connected session is terminated (remote or TNC-initiated).
+  if (dataKind === "d") {
+    return {
+      kind: "disconnected",
+      direction: "rx",
+      instanceId,
+      source,
+      destination,
+      payload
+    };
+  }
+
+  // AGWPE sends incoming raw AX.25 frames as 'K' frames.
+  // Some AGWPE servers (e.g. Kantronics KA-Node) never send 'C' (connected) or 'D' (data)
+  // frames — all connected-session traffic arrives inside 'K' frames instead. Decode the
+  // embedded AX.25 to recover connection and data events so session routing still applies.
+  if (dataKind === "K") {
+    try {
+      const ax25 = decodeWireAx25(payload);
+      if (ax25.frameType === "I") {
+        // AX.25 I-frame: connected data from an established session.
+        // _kFrameOrigin marks this as derived from a raw K-frame so
+        // parseInboundAgwpeStream can suppress it when a D-frame for the
+        // same session also appears in the same TCP segment.
+        return {
+          kind: "connected-data",
+          direction: "rx",
+          instanceId,
+          source: ax25.source,
+          destination: ax25.destination,
+          via: ax25.via || [],
+          payload: ax25.payload,
+          _kFrameOrigin: true,
+          _ax25Control: ax25.control
+        };
+      }
+      // UA (0x63 with F=0 / 0x73 with F=1): remote station accepted our SABM.
+      if (ax25.frameType === "U" && (ax25.control & 0xEF) === 0x63) {
+        return {
+          kind: "connected",
+          direction: "rx",
+          instanceId,
+          source: ax25.source,
+          destination: ax25.destination,
+          payload
+        };
+      }
+    } catch (_) {
+      // Not a decodable AX.25 frame; deliver as raw.
+    }
+    return {
+      kind: "raw",
+      direction: "rx",
+      instanceId,
+      source,
+      destination,
+      payload,
+      dataKind
+    };
+  }
+
+  // AGWPE sends connected session data as 'D' frames (standard-compliant TNCs).
+  if (dataKind === "D") {
+    return {
+      kind: "connected-data",
+      direction: "rx",
+      instanceId,
+      source,
+      destination,
+      payload
+    };
+  }
+
+  // Ignore other frame types (connection lifecycle, monitor, etc.)
+  return null;
+}
+
+function parseInboundAgwpeStream(context, chunk) {
+  context._rxBuffer = Buffer.concat([context._rxBuffer || Buffer.alloc(0), chunk]);
+  const parsed = [];
+
+  while (context._rxBuffer.length >= 36) {
+    const dataLen = context._rxBuffer.readUInt32LE(28);
+    const totalLen = 36 + dataLen;
+    if (context._rxBuffer.length < totalLen) {
+      break;
+    }
+
+    const one = context._rxBuffer.subarray(0, totalLen);
+    context._rxBuffer = context._rxBuffer.subarray(totalLen);
+    const decoded = decodeInboundAgwpeFrame(context.instanceId, one);
+    if (decoded) {
+      parsed.push(decoded);
+    }
+  }
+
+  // Some AGWPE servers (e.g. soundmodem) emit both a raw K-frame (embedded AX.25
+  // I-frame) and a parsed D-frame for the same connected-session data. Delivering
+  // both causes the flow to receive each message twice.
+  //
+  // Two complementary dedup strategies:
+  //
+  //   Same-batch  — K-frame and D-frame arrive in the same TCP segment: suppress
+  //   the K-frame immediately; no persistent state needed.
+  //
+  //   Cross-segment — K-frame and D-frame arrive in separate TCP segments (common
+  //   in practice). context._kFrameDedup tracks per (source>destination) state:
+  //     pendingPayload  payload of the last delivered K-frame I-frame
+  //     dFrameMode      once true, all future K-frame I-frames for this pair are
+  //                     suppressed (D-frames are then the authoritative source)
+  if (!context._kFrameDedup) {
+    context._kFrameDedup = new Map();
+  }
+
+  // Pass 1: collect source>destination keys for D-frames in this batch (same-batch dedup).
+  const dFramePairs = new Set();
+  for (const f of parsed) {
+    if (f.kind === "connected-data" && !f._kFrameOrigin) {
+      dFramePairs.add(
+        (f.source || "").toUpperCase() + ">" + (f.destination || "").toUpperCase()
+      );
+    }
+  }
+
+  // Pass 2: apply dedup rules and build result.
+  const result = [];
+  for (const f of parsed) {
+    if (f.kind === "connected-data") {
+      const srcKey = (f.source || "").toUpperCase();
+      const dstKey = (f.destination || "").toUpperCase();
+      const pairKey = srcKey + ">" + dstKey;
+
+      if (f._kFrameOrigin) {
+        // Same-batch: a D-frame for this pair is in the same batch — suppress K-frame.
+        if (dFramePairs.has(pairKey)) {
+          delete f._kFrameOrigin;
+          continue;
+        }
+        // Cross-segment: check session-level dFrameMode.
+        const dedup = context._kFrameDedup.get(pairKey) || { dFrameMode: false, pendingPayload: null };
+        if (dedup.dFrameMode) {
+          // Session has confirmed it uses D-frames; suppress K-frame I-frames.
+          delete f._kFrameOrigin;
+          continue;
+        }
+        // K-K digipeater dedup: suppress the digipeated copy of a K-I frame we
+        // already delivered (same AX.25 N(S) sequence number from the same pair
+        // within a 10-second window).
+        if (f._ax25Control !== undefined) {
+          const seq = (f._ax25Control >> 1) & 0x07;
+          if (dedup.lastKSeq === seq && typeof dedup.lastKTime === "number" &&
+              (Date.now() - dedup.lastKTime) < 10000) {
+            delete f._kFrameOrigin;
+            delete f._ax25Control;
+            continue;
+          }
+          context._kFrameDedup.set(pairKey, { dFrameMode: false, pendingPayload: f.payload, lastKSeq: seq, lastKTime: Date.now() });
+        } else {
+          // Deliver this K-frame and stash its payload for cross-segment dedup.
+          context._kFrameDedup.set(pairKey, { dFrameMode: false, pendingPayload: f.payload });
+        }
+      } else {
+        // D-frame: check for a pending K-frame payload to suppress.
+        const dedup = context._kFrameDedup.get(pairKey) || { dFrameMode: false, pendingPayload: null };
+        const pending = dedup.pendingPayload;
+        if (pending && Buffer.isBuffer(pending) && pending.equals(f.payload)) {
+          // K-frame already delivered this payload cross-segment; suppress D-frame.
+          context._kFrameDedup.set(pairKey, { dFrameMode: true, pendingPayload: null });
+          continue;
+        }
+        // D-frame with no matching pending K-frame: deliver and record dFrameMode.
+        context._kFrameDedup.set(pairKey, { dFrameMode: true, pendingPayload: null });
+      }
+    }
+
+    delete f._kFrameOrigin;
+    delete f._ax25Control;
+    result.push(f);
+  }
+
+  return result;
+}
+
+function sendCallsignRegistrations(node, context) {
+  if (!context.transport || typeof context.transport.sendFrame !== "function") {
+    return;
+  }
+
+  context.callsigns.forEach(function (callsign) {
+    const frame = makeAgwpeRegistrationFrame(callsign);
+    context.transport.sendFrame(frame, function (error) {
+      if (error) {
+        node.warn(`AGWPE callsign registration failed for ${callsign}: ${error.message}`);
+      }
+    });
+  });
+}
+
+function syncMonitorMode(node, context) {
+  if (!context.transport || typeof context.transport.sendFrame !== "function") {
+    return;
+  }
+
+  // AGWPE 'm' is a toggle command. Keep a local wire-state mirror and only send when needed.
+  const desiredEnabled = Boolean(context.monitorEnabled);
+  const currentlyEnabled = Boolean(context.monitorWireEnabled);
+  if (desiredEnabled === currentlyEnabled) {
+    return;
+  }
+
+  context.transport.sendFrame(makeMonitorToggleFrame(), function (error) {
+    if (error) {
+      node.warn(`AGWPE monitor toggle TX failed: ${error.message}`);
+      return;
+    }
+    context.monitorWireEnabled = desiredEnabled;
+  });
+}
+
+function syncRawMode(node, context) {
+  if (!context.transport || typeof context.transport.sendFrame !== "function") {
+    return;
+  }
+
+  // AGWPE 'k' is a toggle command. Keep a local wire-state mirror and only send when needed.
+  const desiredEnabled = Boolean(context.rawEnabled);
+  const currentlyEnabled = Boolean(context.rawWireEnabled);
+  if (desiredEnabled === currentlyEnabled) {
+    return;
+  }
+
+  context.transport.sendFrame(makeRawToggleFrame(), function (error) {
+    if (error) {
+      node.warn(`AGWPE raw toggle TX failed: ${error.message}`);
+      return;
+    }
+    context.rawWireEnabled = desiredEnabled;
+  });
+}
+
+function bindTransportBridge(node, context) {
+  if (context.transportBridgeBound) {
+    return;
+  }
+
+  function sendWireFrame(wireFrame, label) {
+    if (!context.transport || typeof context.transport.sendFrame !== "function") {
+      return;
+    }
+    context.transport.sendFrame(wireFrame, function (error) {
+      if (error) {
+        node.warn(`AGWPE ${label} TX failed: ${error.message}`);
+      }
+    });
+  }
+
+  context._onConnTx = function (frame) {
+    if (!frame || frame.direction !== "tx") {
+      return;
+    }
+    if (frame.event === "connect") {
+      const viaPath = Array.isArray(frame.via) && frame.via.length > 0 ? frame.via : null;
+      sendWireFrame(
+        viaPath
+          ? makeViaConnectFrame(frame.source, frame.destination, viaPath)
+          : makeConnectFrame(frame.source, frame.destination),
+        "conn-connect"
+      );
+    } else if (frame.event === "disconnect") {
+      sendWireFrame(makeDisconnectFrame(frame.source, frame.destination), "conn-disconnect");
+    } else {
+      // data chunk
+      const payload = Buffer.isBuffer(frame.payload)
+        ? frame.payload
+        : Buffer.from(frame.payload || "", "utf8");
+      sendWireFrame(makeDataFrame(frame.source, frame.destination, payload), "conn-data");
+    }
+  };
+
+  context._onUiTx = function (frame) {
+    if (!frame || frame.direction !== "tx") {
+      return;
+    }
+    const payload = Buffer.isBuffer(frame.payload)
+      ? frame.payload
+      : Buffer.from(frame.payload || "", "utf8");
+    sendWireFrame(makeUiFrame(frame.source, frame.destination, payload), "ui-data");
+  };
+
+  context._onRawTx = function (frame) {
+    if (!frame || frame.direction !== "tx") {
+      return;
+    }
+    // Raw frames carry AX.25 wire bytes inside AGWPE 'K' frames.
+    // Many AGWPE implementations include a leading 0x00 flag byte before
+    // the AX.25 address chain for K payloads; preserve provided prefix or
+    // prepend 0x00 by default for interoperability.
+    const ax25Payload = Buffer.isBuffer(frame.payload)
+      ? frame.payload
+      : typeof frame.payload === "string"
+        ? Buffer.from(frame.payload, "utf8")
+        : null;
+    if (!ax25Payload) {
+      node.warn("AGWPE raw-data TX frame skipped: invalid payload");
+      return;
+    }
+
+    const providedPort = frame.agwpePort !== undefined ? frame.agwpePort : frame.agwpePrefix;
+    let portByte = null;
+    if (Buffer.isBuffer(providedPort)) {
+      portByte = providedPort.length > 0 ? providedPort.readUInt8(0) : 0;
+    } else {
+      const numeric = Number(providedPort);
+      if (Number.isInteger(numeric) && numeric >= 0 && numeric <= 255) {
+        portByte = numeric;
+      }
+    }
+
+    const payload = portByte !== null
+      ? Buffer.concat([Buffer.from([portByte]), ax25Payload])
+      : ax25Payload[0] === 0x00
+        ? ax25Payload
+        : Buffer.concat([Buffer.from([0x00]), ax25Payload]);
+
+    sendWireFrame(makeRawFrame(frame.source, frame.destination, payload), "raw-data");
+  };
+
+  context.bus.on("conn-data", context._onConnTx);
+  context.bus.on("ui-data", context._onUiTx);
+  context.bus.on("raw-data", context._onRawTx);
+  context.transportBridgeBound = true;
+}
+
+function unbindTransportBridge(context) {
+  if (!context.transportBridgeBound) {
+    return;
+  }
+
+  if (context._onConnTx) {
+    context.bus.off("conn-data", context._onConnTx);
+  }
+  if (context._onUiTx) {
+    context.bus.off("ui-data", context._onUiTx);
+  }
+  if (context._onRawTx) {
+    context.bus.off("raw-data", context._onRawTx);
+  }
+
+  context._onConnTx = null;
+  context._onUiTx = null;
+  context._onRawTx = null;
+  context.transportBridgeBound = false;
+}
+
+function handleOpen(node, context, msg, send, done) {
+  const openMessage = resolveOpenMessage(context, msg);
+  const validationError = validateOpen(openMessage);
+  if (validationError) {
+    send(errorEnvelope(validationError, "Invalid open command", { instanceId: node.id }));
+    done();
+    return;
+  }
+
+  context.host = openMessage.host;
+  context.port = openMessage.port;
+  context.monitorEnabled = Boolean(openMessage.monitor);
+  context.monitorWireEnabled = false;
+  context.rawEnabled = Boolean(openMessage.raw);
+  context.rawWireEnabled = false;
+  context.callsigns = normalizeCallsigns(openMessage.callsigns);
+  context.auth = openMessage.username
+    ? { username: openMessage.username, password: openMessage.password }
+    : null;
+
+  context.state = "connecting";
+  node.status({ fill: "yellow", shape: "dot", text: "connecting" });
+
+  if (!context.transport) {
+    const transportLogger = typeof node.log === "function" ? node.log.bind(node) : undefined;
+    context.transport = msg._testTransport || new Transport({ logger: transportLogger });
+    if (typeof context.transport.on === "function") {
+      context.transport.on("error", function (error) {
+        context.state = "failed";
+        node.status({ fill: "red", shape: "dot", text: "failed" });
+        context.bus.emit("conn-lifecycle", {
+          event: "failed",
+          errorCode: "TRANSPORT_ERROR",
+          errorText: error.message
+        });
+      });
+      context.transport.on("closed", function () {
+        context.state = "disconnected";
+        node.status({ fill: "grey", shape: "ring", text: "disconnected" });
+      });
+      context.transport.on("frame", function (data) {
+        if (Buffer.isBuffer(data)) {
+          parseInboundAgwpeStream(context, data).forEach(function (decodedFrame) {
+            context.router.route(context.instanceId, decodedFrame);
+          });
+          return;
+        }
+        context.router.route(context.instanceId, data);
+      });
+    }
+  }
+
+  bindTransportBridge(node, context);
+
+  if (msg._testTransport) {
+    // Register frame handlers with the router to emit on bus
+    context.router.registerInstance(context.instanceId, createRouterHandlers(context));
+    
+    context.state = "connected";
+    node.status({ fill: "green", shape: "dot", text: "connected" });
+    sendCallsignRegistrations(node, context);
+    syncMonitorMode(node, context);
+    syncRawMode(node, context);
+    send(okEnvelope({ instanceId: node.id, event: "opened" }));
+    done();
+    return;
+  }
+
+  context.transport.open(openMessage.host, openMessage.port, function (error) {
+    if (error) {
+      context.state = "failed";
+      node.status({ fill: "red", shape: "dot", text: "failed" });
+      send(errorEnvelope("OPEN_FAILED", error.message, { instanceId: node.id }));
+      done();
+      return;
+    }
+    
+    // Register frame handlers with the router to emit on bus
+    context.router.registerInstance(context.instanceId, createRouterHandlers(context));
+    
+    context.state = "connected";
+    node.status({ fill: "green", shape: "dot", text: "connected" });
+    sendCallsignRegistrations(node, context);
+    syncMonitorMode(node, context);
+    syncRawMode(node, context);
+    send(okEnvelope({ instanceId: node.id, event: "opened" }));
+    done();
+  });
+}
+
+function handleClose(node, context, send, done) {
+  const sessions = context.registry.list(node.id);
+  sessions.forEach(function (session) {
+    context.registry.remove(node.id, session.sessionId);
+    context.bus.emit("conn-lifecycle", {
+      event: "disconnected",
+      sessionId: session.sessionId
+    });
+  });
+
+  // Unregister frame handlers from the router
+  context.router.unregisterInstance(context.instanceId);
+  unbindTransportBridge(context);
+
+  if (!context.transport) {
+    context.monitorWireEnabled = false;
+    context.rawWireEnabled = false;
+    context.state = "disconnected";
+    node.status({ fill: "grey", shape: "ring", text: "disconnected" });
+    send(okEnvelope({ instanceId: node.id, event: "closed" }));
+    done();
+    return;
+  }
+
+  if (typeof context.transport.close !== "function") {
+    context.transport = null;
+    context.monitorWireEnabled = false;
+    context.rawWireEnabled = false;
+    context.state = "disconnected";
+    node.status({ fill: "grey", shape: "ring", text: "disconnected" });
+    send(okEnvelope({ instanceId: node.id, event: "closed" }));
+    done();
+    return;
+  }
+
+  context.transport.close(function () {
+    context.monitorWireEnabled = false;
+    context.rawWireEnabled = false;
+    context.state = "disconnected";
+    node.status({ fill: "grey", shape: "ring", text: "disconnected" });
+    send(okEnvelope({ instanceId: node.id, event: "closed" }));
+    done();
+  });
+}
+
+function handleModeToggle(node, context, msg, send, done) {
+  if (msg.command === "set-raw-mode") {
+    context.rawEnabled = Boolean(msg.enabled);
+    syncRawMode(node, context);
+    send(okEnvelope({ instanceId: context.instanceId, event: "raw-mode", rawEnabled: context.rawEnabled }));
+    done();
+    return true;
+  }
+  if (msg.command === "set-monitor-mode") {
+    context.monitorEnabled = Boolean(msg.enabled);
+    syncMonitorMode(node, context);
+    send(
+      okEnvelope({ instanceId: context.instanceId, event: "monitor-mode", monitorEnabled: context.monitorEnabled })
+    );
+    done();
+    return true;
+  }
+  return false;
+}
+
+module.exports = function (RED) {
+  function AgwpeClientNode(config) {
+    RED.nodes.createNode(this, config);
+    const node = this;
+    const logger = typeof node.log === "function" ? node.log.bind(node) : undefined;
+    const context = store.ensureInstance(node.id, logger);
+    context.instanceId = node.id;
+    context.openDefaults = {
+      host: config.host,
+      port: config.port,
+      callsigns: config.callsigns,
+      username: config.username,
+      password: config.password,
+      monitor: config.monitor,
+      raw: config.raw
+    };
+
+    // Store instance in flow context for discovery by other nodes
+    store.setClientToFlow(node.context().flow, context);
+
+    // Keep node reference on context so router handlers can emit output asynchronously.
+    context.node = node;
+
+    node.status({ fill: "grey", shape: "ring", text: "disconnected" });
+
+    node.on("input", function (msg, send, done) {
+      const localSend = normalizeSend(node, send);
+      const localDone = done || function () {};
+
+      if (handleModeToggle(node, context, msg, localSend, localDone)) {
+        return;
+      }
+
+      if (msg.command === "open") {
+        handleOpen(node, context, msg, localSend, localDone);
+        return;
+      }
+
+      if (msg.command === "close") {
+        handleClose(node, context, localSend, localDone);
+        return;
+      }
+
+      if (isConnSessionCommand(msg.command)) {
+        localSend(
+          errorEnvelope("COMMAND_ROUTING_ERROR", "send must be sent to conn-out node", {
+            instanceId: node.id,
+            command: msg.command
+          })
+        );
+        localDone();
+        return;
+      }
+
+      localSend(errorEnvelope("UNSUPPORTED_COMMAND", "Unsupported command", { instanceId: node.id }));
+      localDone();
+    });
+
+    node.on("close", function (removed, done) {
+      // Clean up flow context
+      store.removeClientFromFlow(node.context().flow);
+      unbindTransportBridge(context);
+      
+      if (context.transport && typeof context.transport.close === "function") {
+        context.transport.close(function () {
+          store.removeInstance(node.id);
+          done();
+        });
+        return;
+      }
+      store.removeInstance(node.id);
+      done();
+    });
+  }
+
+  RED.nodes.registerType("agwpe-client", AgwpeClientNode);
+};
+
+module.exports._internal = {
+  validateOpen,
+  handleModeToggle,
+  isConnSessionCommand,
+  makeAgwpeRegistrationFrame,
+  resolveOpenMessage
+};

@@ -1,0 +1,130 @@
+[
+    {
+        "id": "65a0d887c03a3e96",
+        "type": "tab",
+        "label": "Beacons",
+        "disabled": false,
+        "info": "",
+        "env": []
+    },
+    {
+        "id": "a4494b4c19e5a930",
+        "type": "ui-in",
+        "z": "65a0d887c03a3e96",
+        "client": "9563d0689b7ce1af",
+        "name": "",
+        "payloadOutput": "string",
+        "x": 164,
+        "y": 100,
+        "wires": [
+            [
+                "799c276c66fa1dce"
+            ]
+        ]
+    },
+    {
+        "id": "24e57122cb89257d",
+        "type": "debug",
+        "z": "65a0d887c03a3e96",
+        "name": "debug 1",
+        "active": true,
+        "tosidebar": true,
+        "console": true,
+        "tostatus": false,
+        "complete": "true",
+        "targetType": "full",
+        "statusVal": "",
+        "statusType": "auto",
+        "x": 564,
+        "y": 100,
+        "wires": []
+    },
+    {
+        "id": "799c276c66fa1dce",
+        "type": "function",
+        "z": "65a0d887c03a3e96",
+        "name": "function 2",
+        "func": "\nconst vias = msg.via.map( v => v.callsign + (v.hasBeenRepeated ? '*' : '') ).join(' ');\n\nreturn {\n    source: msg.source,\n    destination: msg.destination,\n    vias,\n    payload: msg.payload,\n};",
+        "outputs": 1,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 354,
+        "y": 100,
+        "wires": [
+            [
+                "24e57122cb89257d"
+            ]
+        ]
+    },
+    {
+        "id": "69164145ed38640a",
+        "type": "inject",
+        "z": "65a0d887c03a3e96",
+        "name": "",
+        "props": [],
+        "repeat": "",
+        "crontab": "",
+        "once": false,
+        "onceDelay": 0.1,
+        "topic": "",
+        "x": 190,
+        "y": 180,
+        "wires": [
+            [
+                "3207efd50fdb02f8"
+            ]
+        ]
+    },
+    {
+        "id": "3207efd50fdb02f8",
+        "type": "ui-out",
+        "z": "65a0d887c03a3e96",
+        "client": "9563d0689b7ce1af",
+        "name": "",
+        "source": "N0CALL-7",
+        "destination": "APX100",
+        "via": "WIDE1-1,WIDE2-1",
+        "payload": "!3612.97N/11517.07W-node-red-contrib-ax25 test",
+        "x": 350,
+        "y": 180,
+        "wires": [
+            [
+                "de2571a8cf9037f8"
+            ]
+        ]
+    },
+    {
+        "id": "de2571a8cf9037f8",
+        "type": "debug",
+        "z": "65a0d887c03a3e96",
+        "name": "debug 7",
+        "active": true,
+        "tosidebar": true,
+        "console": true,
+        "tostatus": false,
+        "complete": "true",
+        "targetType": "full",
+        "statusVal": "",
+        "statusType": "auto",
+        "x": 550,
+        "y": 180,
+        "wires": []
+    },
+    {
+        "id": "9563d0689b7ce1af",
+        "type": "agwpe-client",
+        "name": "",
+        "host": "192.168.68.20",
+        "port": 8000,
+        "callsigns": "N0CALL",
+        "username": "",
+        "password": "",
+        "monitor": false,
+        "raw": true,
+        "reconnect": true,
+        "reconnectDelay": 5000
+    }
+]

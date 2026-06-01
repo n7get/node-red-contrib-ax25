@@ -1,0 +1,48 @@
+<script type="text/javascript">
+RED.nodes.registerType("monitor-in", {
+  category: "agwpe",
+  color: "#d4edda",
+  defaults: {
+    client: { value: "", type: "agwpe-client", required: true },
+    name: { value: "" }
+  },
+  inputs: 0,
+  outputs: 1,
+  icon: "font-awesome/fa-eye",
+  label: function () {
+    return this.name || "monitor-in";
+  }
+});
+</script>
+
+<script type="text/html" data-template-name="monitor-in">
+  <div class="form-row">
+    <label for="node-input-client"><i class="fa fa-server"></i> Client</label>
+    <input type="text" id="node-input-client" />
+  </div>
+  <div class="form-row">
+    <label for="node-input-name"><i class="fa fa-tag"></i> Name</label>
+    <input type="text" id="node-input-name" />
+  </div>
+</script>
+
+<script type="text/html" data-help-name="monitor-in">
+  <p>Receives passive monitor traffic when monitor mode is enabled on agwpe-client.</p>
+  <p>Automatically binds to the AGWPE client node in the flow.</p>
+
+  <h3>Output</h3>
+  <dl class="message-properties">
+    <dt>status <span class="property-type">string</span></dt>
+    <dd>Always <code>"ok"</code>.</dd>
+    <dt>event <span class="property-type">string</span></dt>
+    <dd>Always <code>"monitor"</code>.</dd>
+    <dt>source <span class="property-type">string</span></dt>
+    <dd>Source callsign from the AX.25 header.</dd>
+    <dt>destination <span class="property-type">string</span></dt>
+    <dd>Destination callsign.</dd>
+    <dt>via <span class="property-type">array</span></dt>
+    <dd>Decoded digipeater objects (empty array if none).</dd>
+    <dt>payload <span class="property-type">Buffer</span></dt>
+    <dd>Frame information field bytes.</dd>
+  </dl>
+</script>

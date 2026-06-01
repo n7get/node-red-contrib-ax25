@@ -1,0 +1,64 @@
+<script type="text/javascript">
+RED.nodes.registerType("ui-in", {
+  category: "agwpe",
+  color: "#d4edda",
+  defaults: {
+    client: { value: "", type: "agwpe-client", required: true },
+    name: { value: "" },
+    payloadOutput: { value: "string" }
+  },
+  inputs: 0,
+  outputs: 1,
+  icon: "font-awesome/fa-rss",
+  oneditprepare: function () {
+    const mode = this.payloadOutput === "string" ? "string" : "buffer";
+    $("#node-input-payloadOutput").val(mode);
+  },
+  oneditsave: function () {
+    const mode = $("#node-input-payloadOutput").val();
+    this.payloadOutput = mode === "string" ? "string" : "buffer";
+  },
+  label: function () {
+    return this.name || "ui-in";
+  }
+});
+</script>
+
+<script type="text/html" data-template-name="ui-in">
+  <div class="form-row">
+    <label for="node-input-client"><i class="fa fa-server"></i> Client</label>
+    <input type="text" id="node-input-client" />
+  </div>
+  <div class="form-row">
+    <label for="node-input-name"><i class="fa fa-tag"></i> Name</label>
+    <input type="text" id="node-input-name" />
+  </div>
+  <div class="form-row">
+    <label for="node-input-payloadOutput"><i class="fa fa-file-text-o"></i> Payload Output</label>
+    <select id="node-input-payloadOutput">
+      <option value="buffer">Buffer</option>
+      <option value="string">String (UTF-8)</option>
+    </select>
+  </div>
+</script>
+
+<script type="text/html" data-help-name="ui-in">
+  <p>Receives AGWPE K-frame traffic and decodes AX.25 UI frames only.</p>
+  <p>Requires raw mode enabled on the AGWPE client node.</p>
+
+  <h3>Output</h3>
+  <dl class="message-properties">
+    <dt>status <span class="property-type">string</span></dt>
+    <dd>Always <code>"ok"</code>. Non-UI frames are silently dropped.</dd>
+    <dt>event <span class="property-type">string</span></dt>
+    <dd>Always <code>"ui"</code>.</dd>
+    <dt>source <span class="property-type">string</span></dt>
+    <dd>Source callsign.</dd>
+    <dt>destination <span class="property-type">string</span></dt>
+    <dd>Destination callsign.</dd>
+    <dt class="optional">via <span class="property-type">array</span></dt>
+    <dd>Decoded digipeater objects, if present.</dd>
+    <dt>payload <span class="property-type">Buffer | string</span></dt>
+    <dd>Frame information field. Buffer or UTF-8 string depending on Payload Output setting.</dd>
+  </dl>
+</script>

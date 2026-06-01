@@ -1,0 +1,80 @@
+<script type="text/javascript">
+RED.nodes.registerType("ui-out", {
+  category: "agwpe",
+  color: "#d4edda",
+  defaults: {
+    client: { value: "", type: "agwpe-client", required: true },
+    name: { value: "" },
+    source: { value: "" },
+    destination: { value: "" },
+    via: { value: "" },
+    payload: { value: "" }
+  },
+  inputs: 1,
+  outputs: 1,
+  icon: "font-awesome/fa-broadcast-tower",
+  label: function () {
+    return this.name || "ui-out";
+  }
+});
+</script>
+
+<script type="text/html" data-template-name="ui-out">
+  <div class="form-row">
+    <label for="node-input-client"><i class="fa fa-server"></i> Client</label>
+    <input type="text" id="node-input-client" />
+  </div>
+  <div class="form-row">
+    <label for="node-input-name"><i class="fa fa-tag"></i> Name</label>
+    <input type="text" id="node-input-name" />
+  </div>
+  <div class="form-row">
+    <label for="node-input-source"><i class="fa fa-sign-in"></i> Source <span style="color:#d00">*</span></label>
+    <input type="text" id="node-input-source" />
+  </div>
+  <div class="form-row">
+    <label for="node-input-destination"><i class="fa fa-sign-out"></i> Destination <span style="color:#d00">*</span></label>
+    <input type="text" id="node-input-destination" />
+  </div>
+  <div class="form-row">
+    <label for="node-input-via"><i class="fa fa-random"></i> Via</label>
+    <input type="text" id="node-input-via" placeholder="WIDE1-1, WIDE2-1" />
+  </div>
+  <div class="form-row">
+    <label for="node-input-payload"><i class="fa fa-file-text-o"></i> Payload <span style="color:#d00">*</span></label>
+    <input type="text" id="node-input-payload" />
+  </div>
+</script>
+
+<script type="text/html" data-help-name="ui-out">
+  <p>Encodes AX.25 UI frames (control=0x03, pid=0xF0) and sends them via AGWPE K frames.</p>
+  <p>Requires raw mode enabled on the AGWPE client node.</p>
+
+  <h3>Input</h3>
+  <dl class="message-properties">
+    <dt>source <span class="property-type">string</span></dt>
+    <dd>Sending callsign (e.g. <code>"N0CALL-1"</code>). Overrides editor value.</dd>
+    <dt>destination <span class="property-type">string</span></dt>
+    <dd>Destination callsign (e.g. <code>"APRS"</code>). Overrides editor value.</dd>
+    <dt class="optional">via <span class="property-type">string | array</span></dt>
+    <dd>Digipeater path. Overrides editor value. A space- or comma-separated string
+    (e.g. <code>"WIDE1-1 WIDE2-1"</code>) or an array of callsign strings
+    (e.g. <code>["WIDE1-1", "WIDE2-1"]</code>). Omit or leave empty for no digipeating.</dd>
+    <dt>payload <span class="property-type">string | Buffer</span></dt>
+    <dd>Frame information field to transmit. A string is encoded as UTF-8 bytes before
+    being placed in the AX.25 information field. A Buffer is used as-is. Overrides editor value.</dd>
+  </dl>
+  <p><strong>Required:</strong> source, destination, and payload must each be set in the editor or provided in the input message.</p>
+
+  <h3>Output</h3>
+  <dl class="message-properties">
+    <dt>status <span class="property-type">string</span></dt>
+    <dd><code>"ok"</code> on success; <code>"error"</code> if the send fails. Check this field first.</dd>
+    <dt>event <span class="property-type">string</span></dt>
+    <dd>When <code>status</code> is <code>"ok"</code>: always <code>"ui-sent"</code>.</dd>
+    <dt class="optional">errorCode <span class="property-type">string</span></dt>
+    <dd>When <code>status</code> is <code>"error"</code>: <code>CLIENT_NOT_FOUND</code>, <code>RAW_MODE_DISABLED</code>, or <code>UI_SEND_INVALID</code>.</dd>
+    <dt class="optional">errorText <span class="property-type">string</span></dt>
+    <dd>When <code>status</code> is <code>"error"</code>: human-readable description of the error.</dd>
+  </dl>
+</script>

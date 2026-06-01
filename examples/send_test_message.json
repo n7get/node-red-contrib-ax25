@@ -1,0 +1,643 @@
+[
+    {
+        "id": "f1e3c30bea1bbe94",
+        "type": "subflow",
+        "name": "Bye",
+        "info": "",
+        "category": "",
+        "in": [
+            {
+                "x": 80,
+                "y": 120,
+                "wires": [
+                    {
+                        "id": "0813fedcec47e075"
+                    }
+                ]
+            }
+        ],
+        "out": [],
+        "env": [],
+        "meta": {},
+        "color": "#DDAA99"
+    },
+    {
+        "id": "0813fedcec47e075",
+        "type": "function",
+        "z": "f1e3c30bea1bbe94",
+        "name": "B",
+        "func": "\"use strict\";\n\nif (!msg.sessionId) {\n  const errorCode = 'NO_SESSION_ID';\n  const errorText = \"sessionID not found\";\n\n  node.error(`[${errorCode}] ${errorText}`);\n\n  return [{\n    status: 'error',\n    errorCode,\n    errorText,\n    msg,\n  }, null];\n}\n\nreturn [null, {\n    sessionId: msg.sessionId,\n    command: 'send',\n    payload: 'B',\n  timeout: 30000,\n}];\n",
+        "outputs": 2,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 210,
+        "y": 120,
+        "wires": [
+            [
+                "637170b1c7227488"
+            ],
+            [
+                "1e49e3218b1dd308"
+            ]
+        ]
+    },
+    {
+        "id": "1e49e3218b1dd308",
+        "type": "send",
+        "z": "f1e3c30bea1bbe94",
+        "name": "",
+        "timeout": "",
+        "waitFor": "",
+        "x": 390,
+        "y": 160,
+        "wires": [
+            [
+                "e3ab85e4461b92a5"
+            ],
+            [
+                "fed58202ceb48e13"
+            ]
+        ]
+    },
+    {
+        "id": "e3ab85e4461b92a5",
+        "type": "function",
+        "z": "f1e3c30bea1bbe94",
+        "name": "check error",
+        "func": "\"use strict\";\n\nif (msg.status === 'error') {\n    node.error(`[${msg.errorCode}] ${msg.errorText}`, msg);\n    return msg;\n}\nreturn null;",
+        "outputs": 1,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 610,
+        "y": 140,
+        "wires": [
+            [
+                "fed58202ceb48e13"
+            ]
+        ]
+    },
+    {
+        "id": "fed58202ceb48e13",
+        "type": "disconnect",
+        "z": "f1e3c30bea1bbe94",
+        "name": "",
+        "x": 810,
+        "y": 180,
+        "wires": [
+            []
+        ]
+    },
+    {
+        "id": "637170b1c7227488",
+        "type": "disconnect",
+        "z": "f1e3c30bea1bbe94",
+        "name": "",
+        "x": 410,
+        "y": 80,
+        "wires": [
+            []
+        ]
+    },
+    {
+        "id": "f7f34a0fbba6409d",
+        "type": "subflow",
+        "name": "Send message",
+        "info": "",
+        "category": "",
+        "in": [
+            {
+                "x": 100,
+                "y": 120,
+                "wires": [
+                    {
+                        "id": "090399aff5479949"
+                    }
+                ]
+            }
+        ],
+        "out": [
+            {
+                "x": 410,
+                "y": 540,
+                "wires": [
+                    {
+                        "id": "1afee35f8b39aeae",
+                        "port": 0
+                    }
+                ]
+            },
+            {
+                "x": 400,
+                "y": 440,
+                "wires": [
+                    {
+                        "id": "b03019b9ac2774bd",
+                        "port": 1
+                    }
+                ]
+            }
+        ],
+        "env": [],
+        "meta": {},
+        "color": "#DDAA99",
+        "inputLabels": [
+            "Input"
+        ],
+        "outputLabels": [
+            "Error",
+            "Ok"
+        ]
+    },
+    {
+        "id": "b03019b9ac2774bd",
+        "type": "function",
+        "z": "f7f34a0fbba6409d",
+        "name": "done",
+        "func": "\"use strict\";\n\nif (!msg.match || !msg.match.startsWith('ENTER COMMAND')) {\n  node.error(\"Expected ENTER COMMAND\", msg);\n  return [{ sessionId: msg.sessionId }, null];\n}\n\nflow.set(msg.sessionId, undefined);\n\nreturn [null, { sessionId: msg.sessionId }];\n",
+        "outputs": 2,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 230,
+        "y": 420,
+        "wires": [
+            [
+                "4b0c0af1ad7ff1f2"
+            ],
+            []
+        ]
+    },
+    {
+        "id": "1f73bfe9965d5eba",
+        "type": "send",
+        "z": "f7f34a0fbba6409d",
+        "name": "",
+        "timeout": "",
+        "waitFor": "",
+        "x": 510,
+        "y": 320,
+        "wires": [
+            [
+                "f297ea382d23401a"
+            ],
+            [
+                "b03019b9ac2774bd"
+            ]
+        ]
+    },
+    {
+        "id": "55133ce425ecb905",
+        "type": "function",
+        "z": "f7f34a0fbba6409d",
+        "name": "message",
+        "func": "\"use strict\";\n\nif (!msg.match || !msg.match.startsWith('ENTER MESSAGE')) {\n  node.error(\"Expected ENTER MESSAGE\", msg);\n  return [{ sessionId: msg.sessionId }, null];\n}\n\nconst p = flow.get(msg.sessionId);\n\nconst payload = p.message.split(/\\r\\n|\\r|\\n/);\npayload.push('/ex');\n\nreturn [null, {\n  sessionId: msg.sessionId,\n  payload,\n  waitFor: \"^ENTER COMMAND\",\n  timeout: 30000,\n}];\n",
+        "outputs": 2,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 240,
+        "y": 320,
+        "wires": [
+            [
+                "5535e8c84873b0cf"
+            ],
+            [
+                "1f73bfe9965d5eba"
+            ]
+        ]
+    },
+    {
+        "id": "3b57302d2e4b02e0",
+        "type": "send",
+        "z": "f7f34a0fbba6409d",
+        "name": "",
+        "timeout": "",
+        "waitFor": "",
+        "x": 510,
+        "y": 220,
+        "wires": [
+            [
+                "5f4f636755d763be"
+            ],
+            [
+                "55133ce425ecb905"
+            ]
+        ]
+    },
+    {
+        "id": "373827068969f974",
+        "type": "function",
+        "z": "f7f34a0fbba6409d",
+        "name": "subject",
+        "func": "\"use strict\";\n\nif (!msg.match || !msg.match.startsWith('SUBJECT')) {\n  node.error(\"Expected SUBJECT\", msg);\n  return [{ sessionId: msg.sessionId }, null];\n}\n\nconst p = flow.get(msg.sessionId);\n\nreturn [null, {\n  sessionId: msg.sessionId,\n  payload: p.subject,\n  waitFor: \"^ENTER MESSAGE\",\n  timeout: 30000,\n}];\n",
+        "outputs": 2,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 240,
+        "y": 220,
+        "wires": [
+            [
+                "c64ee163811b7b1c"
+            ],
+            [
+                "3b57302d2e4b02e0"
+            ]
+        ]
+    },
+    {
+        "id": "5cf73512bec967fe",
+        "type": "send",
+        "z": "f7f34a0fbba6409d",
+        "name": "",
+        "timeout": "",
+        "waitFor": "",
+        "x": 510,
+        "y": 120,
+        "wires": [
+            [
+                "1821e4baa068a563"
+            ],
+            [
+                "373827068969f974"
+            ]
+        ]
+    },
+    {
+        "id": "090399aff5479949",
+        "type": "function",
+        "z": "f7f34a0fbba6409d",
+        "name": "ST",
+        "func": "\"use strict\";\n\nconst required = [\"sessionId\", \"to\", \"subject\", \"message\"];\n\nfor (let i = 0; i < required.length; i++) {\n  const p = required[i];\n  \n  if (!msg.hasOwnProperty(p) || msg[p].length === 0) {\n    const errorCode = 'PAYLOAD_INVALID';\n    const errorText = p + \" not found\";\n\n    node.error(`[${errorCode}] ${errorText}`);\n\n    return [{\n      sessionId: msg.sessionId,\n      status: 'error',\n      errorCode,\n      errorText,\n      msg,\n    }, null];\n  }\n}\n\nflow.set(msg.sessionId, {\n    to:      msg.to,\n    subject: msg.subject,\n    message: msg.message\n});\n\nreturn [null, {\n  sessionId: msg.sessionId,\n  payload: \"ST \" + msg.to,\n  waitFor: \"^SUBJECT\",\n  timeout: 30000,\n}];",
+        "outputs": 2,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 230,
+        "y": 120,
+        "wires": [
+            [
+                "f711de2a83d0482b"
+            ],
+            [
+                "5cf73512bec967fe"
+            ]
+        ]
+    },
+    {
+        "id": "1afee35f8b39aeae",
+        "type": "link in",
+        "z": "f7f34a0fbba6409d",
+        "name": "error",
+        "links": [
+            "f711de2a83d0482b",
+            "c64ee163811b7b1c",
+            "5535e8c84873b0cf",
+            "4b0c0af1ad7ff1f2",
+            "81e3e712c3900aa4",
+            "1292b88c4fa4bb3b",
+            "87ab14e10118b86d"
+        ],
+        "x": 255,
+        "y": 540,
+        "wires": [
+            []
+        ]
+    },
+    {
+        "id": "4b0c0af1ad7ff1f2",
+        "type": "link out",
+        "z": "f7f34a0fbba6409d",
+        "name": "link out 38",
+        "mode": "link",
+        "links": [
+            "1afee35f8b39aeae"
+        ],
+        "x": 375,
+        "y": 400,
+        "wires": []
+    },
+    {
+        "id": "f711de2a83d0482b",
+        "type": "link out",
+        "z": "f7f34a0fbba6409d",
+        "name": "link out 35",
+        "mode": "link",
+        "links": [
+            "1afee35f8b39aeae"
+        ],
+        "x": 375,
+        "y": 80,
+        "wires": []
+    },
+    {
+        "id": "c64ee163811b7b1c",
+        "type": "link out",
+        "z": "f7f34a0fbba6409d",
+        "name": "link out 36",
+        "mode": "link",
+        "links": [
+            "1afee35f8b39aeae"
+        ],
+        "x": 375,
+        "y": 200,
+        "wires": []
+    },
+    {
+        "id": "5535e8c84873b0cf",
+        "type": "link out",
+        "z": "f7f34a0fbba6409d",
+        "name": "link out 37",
+        "mode": "link",
+        "links": [
+            "1afee35f8b39aeae"
+        ],
+        "x": 375,
+        "y": 300,
+        "wires": []
+    },
+    {
+        "id": "87ab14e10118b86d",
+        "type": "link out",
+        "z": "f7f34a0fbba6409d",
+        "name": "link out 41",
+        "mode": "link",
+        "links": [
+            "1afee35f8b39aeae"
+        ],
+        "x": 885,
+        "y": 300,
+        "wires": []
+    },
+    {
+        "id": "1292b88c4fa4bb3b",
+        "type": "link out",
+        "z": "f7f34a0fbba6409d",
+        "name": "link out 40",
+        "mode": "link",
+        "links": [
+            "1afee35f8b39aeae"
+        ],
+        "x": 895,
+        "y": 200,
+        "wires": []
+    },
+    {
+        "id": "81e3e712c3900aa4",
+        "type": "link out",
+        "z": "f7f34a0fbba6409d",
+        "name": "link out 39",
+        "mode": "link",
+        "links": [
+            "1afee35f8b39aeae"
+        ],
+        "x": 895,
+        "y": 100,
+        "wires": []
+    },
+    {
+        "id": "1821e4baa068a563",
+        "type": "function",
+        "z": "f7f34a0fbba6409d",
+        "name": "check error",
+        "func": "\"use strict\";\n\nif (msg.status === 'error') {\n    node.error(`[${msg.errorCode}] ${msg.errorText}`, msg);\n    return msg;\n}\nreturn null;",
+        "outputs": 1,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 750,
+        "y": 100,
+        "wires": [
+            [
+                "81e3e712c3900aa4"
+            ]
+        ]
+    },
+    {
+        "id": "5f4f636755d763be",
+        "type": "function",
+        "z": "f7f34a0fbba6409d",
+        "name": "check error",
+        "func": "\"use strict\";\n\nif (msg.status === 'error') {\n    node.error(`[${msg.errorCode}] ${msg.errorText}`, msg);\n    return msg;\n}\nreturn null;",
+        "outputs": 1,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 750,
+        "y": 200,
+        "wires": [
+            [
+                "1292b88c4fa4bb3b"
+            ]
+        ]
+    },
+    {
+        "id": "f297ea382d23401a",
+        "type": "function",
+        "z": "f7f34a0fbba6409d",
+        "name": "check error",
+        "func": "\"use strict\";\n\nif (msg.status === 'error') {\n    node.error(`[${msg.errorCode}] ${msg.errorText}`, msg);\n    return msg;\n}\nreturn null;",
+        "outputs": 1,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 750,
+        "y": 300,
+        "wires": [
+            [
+                "87ab14e10118b86d"
+            ]
+        ]
+    },
+    {
+        "id": "0ee7876edf9c599f",
+        "type": "tab",
+        "label": "Send message test",
+        "disabled": false,
+        "info": "",
+        "env": []
+    },
+    {
+        "id": "8ab37ba877da5e27",
+        "type": "connect",
+        "z": "0ee7876edf9c599f",
+        "client": "663651df790ce7b1",
+        "name": "",
+        "source": "N0CALL",
+        "destination": "N0CALL-1",
+        "via": "",
+        "mode": "line",
+        "timeout": "30000",
+        "waitFor": "^ENTER COMMAND",
+        "x": 400,
+        "y": 100,
+        "wires": [
+            [
+                "42a0cf9ec1d7819b"
+            ],
+            [
+                "0435a297de1eaa16"
+            ]
+        ]
+    },
+    {
+        "id": "b4bb79a786fe17d5",
+        "type": "subflow:f7f34a0fbba6409d",
+        "z": "0ee7876edf9c599f",
+        "name": "",
+        "x": 160,
+        "y": 260,
+        "wires": [
+            [
+                "233c767d70d661e8"
+            ],
+            [
+                "8632ba6c0867ed56"
+            ]
+        ]
+    },
+    {
+        "id": "8632ba6c0867ed56",
+        "type": "subflow:f1e3c30bea1bbe94",
+        "z": "0ee7876edf9c599f",
+        "name": "",
+        "x": 150,
+        "y": 340,
+        "wires": []
+    },
+    {
+        "id": "0435a297de1eaa16",
+        "type": "function",
+        "z": "0ee7876edf9c599f",
+        "name": "test message",
+        "func": "\"use strict\";\n\nreturn {\n    sessionId: msg.sessionId,\n    to: 'TEST',\n    subject: `Simple test message`,\n    message: 'This is a test, this is only a test.',\n}",
+        "outputs": 1,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 160,
+        "y": 180,
+        "wires": [
+            [
+                "b4bb79a786fe17d5"
+            ]
+        ]
+    },
+    {
+        "id": "1eee563566e53d47",
+        "type": "inject",
+        "z": "0ee7876edf9c599f",
+        "name": "Send message test",
+        "props": [],
+        "repeat": "",
+        "crontab": "",
+        "once": false,
+        "onceDelay": 0.1,
+        "topic": "",
+        "x": 170,
+        "y": 100,
+        "wires": [
+            [
+                "8ab37ba877da5e27"
+            ]
+        ]
+    },
+    {
+        "id": "75cdd0c9da8db594",
+        "type": "disconnect",
+        "z": "0ee7876edf9c599f",
+        "name": "",
+        "x": 830,
+        "y": 80,
+        "wires": [
+            []
+        ]
+    },
+    {
+        "id": "42a0cf9ec1d7819b",
+        "type": "function",
+        "z": "0ee7876edf9c599f",
+        "name": "check error",
+        "func": "\"use strict\";\n\nif (msg.status === 'error') {\n    node.error(`[${msg.errorCode}] ${msg.errorText}`, msg);\n    return msg;\n}\nreturn null;",
+        "outputs": 1,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 630,
+        "y": 80,
+        "wires": [
+            [
+                "75cdd0c9da8db594"
+            ]
+        ]
+    },
+    {
+        "id": "2d6e7302e19493f0",
+        "type": "disconnect",
+        "z": "0ee7876edf9c599f",
+        "name": "",
+        "x": 830,
+        "y": 240,
+        "wires": [
+            []
+        ]
+    },
+    {
+        "id": "233c767d70d661e8",
+        "type": "function",
+        "z": "0ee7876edf9c599f",
+        "name": "check error",
+        "func": "\"use strict\";\n\nif (msg.status === 'error') {\n    node.error(`[${msg.errorCode}] ${msg.errorText}`, msg);\n    return msg;\n}\nreturn null;",
+        "outputs": 1,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 630,
+        "y": 240,
+        "wires": [
+            [
+                "2d6e7302e19493f0"
+            ]
+        ]
+    },
+    {
+        "id": "663651df790ce7b1",
+        "type": "agwpe-client",
+        "name": "win10 AGWPE",
+        "host": "192.168.68.11",
+        "port": 8000,
+        "callsigns": "N1CALL",
+        "username": "",
+        "password": "",
+        "monitor": false,
+        "raw": true,
+        "reconnect": true,
+        "reconnectDelay": 5000
+    }
+]

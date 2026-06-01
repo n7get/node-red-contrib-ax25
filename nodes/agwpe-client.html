@@ -1,0 +1,70 @@
+<script type="text/javascript">
+RED.nodes.registerType("agwpe-client", {
+  category: "config",
+  defaults: {
+    name: { value: "" },
+    host: { value: "127.0.0.1" },
+    port: { value: 8000 },
+    callsigns: { value: "" },
+    username: { value: "" },
+    password: { value: "" },
+    monitor: { value: false },
+    raw: { value: false },
+    reconnect: { value: true },
+    reconnectDelay: { value: 5000 }
+  },
+  label: function () {
+    return this.name || (this.host ? this.host + ":" + this.port : "agwpe-client");
+  }
+});
+</script>
+
+<script type="text/html" data-template-name="agwpe-client">
+  <div class="form-row">
+    <label for="node-config-input-name"><i class="fa fa-tag"></i> Name</label>
+    <input type="text" id="node-config-input-name" placeholder="AGWPE Client" />
+  </div>
+  <div class="form-row">
+    <label for="node-config-input-host"><i class="fa fa-globe"></i> Host</label>
+    <input type="text" id="node-config-input-host" placeholder="127.0.0.1" />
+  </div>
+  <div class="form-row">
+    <label for="node-config-input-port"><i class="fa fa-plug"></i> Port</label>
+    <input type="number" id="node-config-input-port" placeholder="8000" min="1" max="65535" />
+  </div>
+  <div class="form-row">
+    <label for="node-config-input-callsigns"><i class="fa fa-list"></i> Callsigns</label>
+    <input type="text" id="node-config-input-callsigns" placeholder="N0CALL or N0CALL,N0CALL-1" />
+  </div>
+  <div class="form-row">
+    <label for="node-config-input-username"><i class="fa fa-user"></i> Username</label>
+    <input type="text" id="node-config-input-username" placeholder="optional" />
+  </div>
+  <div class="form-row">
+    <label for="node-config-input-password"><i class="fa fa-lock"></i> Password</label>
+    <input type="password" id="node-config-input-password" placeholder="optional" />
+  </div>
+  <div class="form-row">
+    <label for="node-config-input-monitor"><i class="fa fa-eye"></i> Monitor Mode</label>
+    <input type="checkbox" id="node-config-input-monitor" style="display:inline-block; width:auto; vertical-align:middle;" />
+  </div>
+  <div class="form-row">
+    <label for="node-config-input-raw"><i class="fa fa-random"></i> Raw Mode</label>
+    <input type="checkbox" id="node-config-input-raw" style="display:inline-block; width:auto; vertical-align:middle;" />
+  </div>
+  <div class="form-row">
+    <label for="node-config-input-reconnect"><i class="fa fa-refresh"></i> Auto-Reconnect</label>
+    <input type="checkbox" id="node-config-input-reconnect" style="display:inline-block; width:auto; vertical-align:middle;" />
+  </div>
+  <div class="form-row">
+    <label for="node-config-input-reconnectDelay"><i class="fa fa-clock-o"></i> Reconnect Delay (ms)</label>
+    <input type="number" id="node-config-input-reconnectDelay" placeholder="5000" min="100" />
+  </div>
+</script>
+
+<script type="text/html" data-help-name="agwpe-client">
+  <p>Configuration node for an AGWPE/FLDIGI TNC connection. Connects automatically on deploy and reconnects when the connection drops.</p>
+  <p>Set the host, port, and optional callsign registrations. Enable <strong>Monitor Mode</strong> to receive all-traffic monitor frames; enable <strong>Raw Mode</strong> to receive raw AX.25 frames.</p>
+  <p>When <strong>Auto-Reconnect</strong> is checked (default), the node waits <em>Reconnect Delay</em> milliseconds before retrying after a lost connection.</p>
+  <p>Consumer nodes (connect, send, monitor-in, raw-in, raw-out, ui-in, ui-out) reference this node via their <em>Client</em> drop-down.</p>
+</script>

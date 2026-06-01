@@ -1,0 +1,117 @@
+<script type="text/javascript">
+RED.nodes.registerType("encode", {
+  category: "agwpe",
+  color: "#d4edda",
+  defaults: {
+    name: { value: "" },
+    source: { value: "" },
+    destination: { value: "" },
+    via: { value: "" },
+    control: { value: 3 },
+    pid: { value: 240 },
+    frameType: { value: "U" },
+    payload: { value: "" }
+  },
+  inputs: 1,
+  outputs: 1,
+  icon: "font-awesome/fa-compress",
+  label: function () {
+    return this.name || "encode";
+  }
+});
+</script>
+
+<script type="text/html" data-template-name="encode">
+  <div class="form-row">
+    <label for="node-input-name"><i class="fa fa-tag"></i> Name</label>
+    <input type="text" id="node-input-name" />
+  </div>
+  <div class="form-row">
+    <label for="node-input-source"><i class="fa fa-sign-in"></i> Source</label>
+    <input type="text" id="node-input-source" />
+  </div>
+  <div class="form-row">
+    <label for="node-input-destination"><i class="fa fa-sign-out"></i> Destination</label>
+    <input type="text" id="node-input-destination" />
+  </div>
+  <div class="form-row">
+    <label for="node-input-via"><i class="fa fa-random"></i> Via</label>
+    <input type="text" id="node-input-via" placeholder="WIDE1-1, WIDE2-1" />
+  </div>
+  <div class="form-row">
+    <label for="node-input-control"><i class="fa fa-sliders"></i> Control</label>
+    <input type="number" id="node-input-control" min="0" max="255" />
+  </div>
+  <div class="form-row">
+    <label for="node-input-pid"><i class="fa fa-hashtag"></i> PID</label>
+    <input type="number" id="node-input-pid" min="0" max="255" />
+  </div>
+  <div class="form-row">
+    <label for="node-input-frameType"><i class="fa fa-filter"></i> Frame Type</label>
+    <select id="node-input-frameType">
+      <option value="I">I</option>
+      <option value="S">S</option>
+      <option value="U">U</option>
+    </select>
+  </div>
+  <div class="form-row">
+    <label for="node-input-payload"><i class="fa fa-file-text-o"></i> Payload</label>
+    <input type="text" id="node-input-payload" />
+  </div>
+</script>
+
+<script type="text/html" data-help-name="encode">
+  <p>Encodes structured AX.25 frame fields into raw bytes. Editor values are defaults;
+  incoming message properties override them when present.</p>
+
+  <h3>Input</h3>
+  <dl class="message-properties">
+    <dt>source <span class="property-type">string</span></dt>
+    <dd>Sending callsign (e.g. <code>"N0CALL-1"</code>). Overrides editor value.</dd>
+    <dt>destination <span class="property-type">string</span></dt>
+    <dd>Destination callsign (e.g. <code>"CQ"</code>). Overrides editor value.</dd>
+    <dt class="optional">via <span class="property-type">string | array</span></dt>
+    <dd>Digipeater path. A space- or comma-separated string (e.g. <code>"WIDE1-1 WIDE2-1"</code>)
+    or an array of callsign strings or <code>{callsign, hasBeenRepeated}</code> objects.
+    Overrides editor value. Omit or leave empty for no digipeaters.</dd>
+    <dt class="optional">control <span class="property-type">number</span></dt>
+    <dd>Raw control field byte (0–255). Takes precedence over <code>frameType</code> when both
+    are provided. Overrides editor value.</dd>
+    <dt class="optional">frameType <span class="property-type">string</span></dt>
+    <dd>Convenience shorthand for <code>control</code> when an exact byte is not needed.
+    <code>"I"</code> → <code>0x00</code>, <code>"S"</code> → <code>0x01</code>,
+    <code>"U"</code> → <code>0x03</code>. Ignored when <code>control</code> is also set.
+    Overrides editor value.</dd>
+    <dt class="optional">pid <span class="property-type">number</span></dt>
+    <dd>Protocol identifier byte (0–255). Defaults to <code>240</code> (<code>0xF0</code> — no layer 3).
+    Overrides editor value.</dd>
+    <dt class="optional">payload <span class="property-type">string | Buffer</span></dt>
+    <dd>Frame information field content. A string is encoded as UTF-8 bytes; a Buffer is used
+    as-is. Overrides editor value.</dd>
+    <dt class="optional">agwpePort <span class="property-type">number</span></dt>
+    <dd>AGWPE port byte. Passed through unchanged to the output message so the result can be
+    piped directly into <b>raw-out</b> without modification.</dd>
+  </dl>
+
+  <h3>Output</h3>
+  <dl class="message-properties">
+    <dt>status <span class="property-type">string</span></dt>
+    <dd><code>"ok"</code> on success; <code>"error"</code> if encoding fails. Check this field first.</dd>
+    <dt>event <span class="property-type">string</span></dt>
+    <dd>When <code>status</code> is <code>"ok"</code>: always <code>"encoded"</code>.</dd>
+    <dt>payload <span class="property-type">Buffer</span></dt>
+    <dd>When <code>status</code> is <code>"ok"</code>: the complete encoded AX.25 frame as raw bytes.
+    Can be passed directly to <b>raw-out</b> — it recognises the encode envelope and extracts
+    the nested payload automatically.</dd>
+    <dt class="optional">agwpePort <span class="property-type">number | null</span></dt>
+    <dd>When <code>status</code> is <code>"ok"</code>: AGWPE port byte passed through from the input,
+    or <code>null</code> if neither <code>msg.agwpePort</code> nor <code>msg.agwpePrefix</code>
+    was present.</dd>
+    <dt class="optional">errorCode <span class="property-type">string</span></dt>
+    <dd>When <code>status</code> is <code>"error"</code>: <code>ENCODE_INPUT_INVALID</code>
+    (source, destination, or control/frameType missing) or <code>ENCODE_FAILED</code>
+    (codec error during encoding).</dd>
+    <dt class="optional">errorText <span class="property-type">string</span></dt>
+    <dd>When <code>status</code> is <code>"error"</code>: human-readable description of the error.</dd>
+  </dl>
+</script>

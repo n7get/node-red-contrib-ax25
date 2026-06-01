@@ -1,0 +1,91 @@
+<script type="text/javascript">
+RED.nodes.registerType("send", {
+  category: "agwpe",
+  color: "#d4edda",
+  defaults: {
+    name: { value: "" },
+    timeout: { value: 0 },
+    waitFor: { value: "" }
+  },
+  inputs: 1,
+  outputs: 2,
+  outputLabels: ["events", "data"],
+  icon: "font-awesome/fa-paper-plane",
+  label: function () {
+    return this.name || "send";
+  }
+});
+</script>
+
+<script type="text/html" data-template-name="send">
+  <div class="form-row">
+    <label for="node-input-name"><i class="fa fa-tag"></i> Name</label>
+    <input type="text" id="node-input-name" />
+  </div>
+  <div class="form-row">
+    <label for="node-input-timeout"><i class="fa fa-clock-o"></i> Timeout (ms)</label>
+    <input type="number" id="node-input-timeout" placeholder="0 = disabled (overridden by msg.timeout)" min="0" style="width:auto" />
+  </div>
+  <div class="form-row">
+    <label for="node-input-waitFor"><i class="fa fa-search"></i> Wait For</label>
+    <input type="text" id="node-input-waitFor" placeholder="regex e.g. >$" />
+  </div>
+</script>
+
+<script type="text/html" data-help-name="send">
+  <p>Sends data over an AX.25 connected session, and receives inbound data in response.</p>
+  <p>Emits session lifecycle events on output 1 and inbound data from the remote station on output 2.</p>
+
+  <h3>Input</h3>
+  <dl class="message-properties">
+    <dt>sessionId <span class="property-type">string</span></dt>
+    <dd>Session to act on.</dd>
+    <dt class="optional">payload <span class="property-type">string | Buffer</span></dt>
+    <dd>Data to send. Required for <code>send</code>. In line mode a trailing <code>\r</code> is appended automatically.</dd>
+    <dt class="optional">waitFor <span class="property-type">string</span></dt>
+    <dd>Regex pattern (overrides node config). After the send, inbound lines are buffered until one matches, then emitted on output 2 as <code>msg.payload</code> (array) with the matching line in <code>msg.match</code>.</dd>
+    <dt class="optional">timeout <span class="property-type">number</span></dt>
+    <dd>Inactivity timeout in milliseconds. Overrides node config. Resets the timer for the session. If no data arrives within this window, a <code>timeout</code> event is emitted on output 1 of <em>this</em> node. Set to <code>0</code> to disable.</dd>
+  </dl>
+
+  <h3>Outputs</h3>
+  <ol class="node-ports">
+    <li>Events
+      <dl class="message-properties">
+        <dt>status <span class="property-type">string</span></dt>
+        <dd><code>"ok"</code> on success; <code>"error"</code> on error.</dd>
+        <dt>event <span class="property-type">string</span></dt>
+        <dd>When <code>status</code> is <code>"ok"</code>: <code>sent</code>.</dd>
+        <dt>sessionId <span class="property-type">string</span></dt>
+        <dd>Identifies the session.</dd>
+        <dt class="optional">messageId <span class="property-type">string</span></dt>
+        <dd>Unique ID for the sent message. Present on <code>sent</code> events.</dd>
+        <dt class="optional">chunkCount <span class="property-type">number</span></dt>
+        <dd>Number of AGWPE frames the payload was split into. Present on <code>sent</code> events.</dd>
+        <dt class="optional">errorCode <span class="property-type">string</span></dt>
+        <dd>When <code>status</code> is <code>"error"</code>: <code>SESSION_NOT_FOUND</code>, <code>SESSION_NOT_CONNECTED</code>, <code>PAYLOAD_INVALID</code>, or <code>TIMEOUT</code> (inactivity timeout; <code>event</code> is also set to <code>"timeout"</code>).</dd>
+        <dt class="optional">errorText <span class="property-type">string</span></dt>
+        <dd>When <code>status</code> is <code>"error"</code>: human-readable description of the error.</dd>
+      </dl>
+    </li>
+    <li>Data
+      <dl class="message-properties">
+        <dt>event <span class="property-type">string</span></dt>
+        <dd>Always <code>"data"</code>.</dd>
+        <dt>payload <span class="property-type">string | Buffer | array</span></dt>
+        <dd>In line mode without <code>waitFor</code>: one string per line. With <code>waitFor</code>: array of lines buffered before the match. In binary mode: a Buffer.</dd>
+        <dt class="optional">match <span class="property-type">string</span></dt>
+        <dd>The line that triggered the <code>waitFor</code> pattern. Only present when <code>waitFor</code> is set and matched.</dd>
+        <dt>sessionId <span class="property-type">string</span></dt>
+        <dd>Identifies the session this data belongs to.</dd>
+      </dl>
+    </li>
+  </ol>
+
+  <h3>Details</h3>
+  <p>When a <code>send</code> command is processed, this node re-claims the data output for the
+  session. Inbound data received after the send is routed through this node's output 2
+  until another Send node takes over or the session closes.</p>
+  <p><b>Timeout</b> and <b>Wait For</b> can be set on the node and overridden per-message via <code>msg.timeout</code> and <code>msg.waitFor</code>.
+  Leave <b>Wait For</b> blank to emit one message per line.</p>
+</script>

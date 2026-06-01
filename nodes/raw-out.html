@@ -1,0 +1,76 @@
+<script type="text/javascript">
+RED.nodes.registerType("raw-out", {
+  category: "agwpe",
+  color: "#d4edda",
+  defaults: {
+    client: { value: "", type: "agwpe-client", required: true },
+    name: { value: "" },
+    agwpePort: { value: 0 }
+  },
+  inputs: 1,
+  outputs: 1,
+  icon: "font-awesome/fa-upload",
+  oneditprepare: function () {
+    const value = this.agwpePort !== undefined ? this.agwpePort : this.flag;
+    const parsed = Number(value);
+    const normalized = Number.isInteger(parsed) && parsed >= 0 && parsed <= 255 ? parsed : 0;
+    $("#node-input-agwpePort").val(normalized);
+  },
+  oneditsave: function () {
+    const parsed = Number($("#node-input-agwpePort").val());
+    this.agwpePort = Number.isInteger(parsed) && parsed >= 0 && parsed <= 255 ? parsed : 0;
+  },
+  label: function () {
+    return this.name || "raw-out";
+  }
+});
+</script>
+
+<script type="text/html" data-template-name="raw-out">
+  <div class="form-row">
+    <label for="node-input-client"><i class="fa fa-server"></i> Client</label>
+    <input type="text" id="node-input-client" />
+  </div>
+  <div class="form-row">
+    <label for="node-input-name"><i class="fa fa-tag"></i> Name</label>
+    <input type="text" id="node-input-name" />
+  </div>
+  <div class="form-row">
+    <label for="node-input-agwpePort"><i class="fa fa-flag"></i> AGWPE Port</label>
+    <input type="number" id="node-input-agwpePort" min="0" max="255" step="1" />
+  </div>
+</script>
+
+<script type="text/html" data-help-name="raw-out">
+  <p>Sends a raw AX.25 frame when raw mode is enabled on the AGWPE client node.</p>
+
+  <h3>Input</h3>
+  <dl class="message-properties">
+    <dt>payload <span class="property-type">Buffer | array | Uint8Array | string | object</span></dt>
+    <dd>The raw AX.25 frame bytes to transmit. Accepted formats:
+      <ul>
+        <li><b>Buffer</b> — used as-is.</li>
+        <li><b>byte array</b> or <b>Uint8Array</b> — converted to a Buffer.</li>
+        <li><b>hex string</b> — pairs of hex digits, optionally separated by spaces or commas
+        (e.g. <code>"82 a0 a8"</code> or <code>"82a0a8"</code>). <code>0x</code> prefixes are stripped.</li>
+        <li><b>encode envelope</b> — if <code>msg.payload</code> is an output message from the
+        <b>encode</b> node, its nested <code>payload</code> Buffer is used automatically.</li>
+      </ul>
+    </dd>
+    <dt class="optional">agwpePort <span class="property-type">number</span></dt>
+    <dd>AGWPE port byte (0–255) identifying the TNC port to transmit on. Overrides the editor
+    value. Defaults to <code>0</code> if neither the message nor the editor provides a value.</dd>
+  </dl>
+
+  <h3>Output</h3>
+  <dl class="message-properties">
+    <dt>status <span class="property-type">string</span></dt>
+    <dd><code>"ok"</code> on success; <code>"error"</code> if the send fails. Check this field first.</dd>
+    <dt>event <span class="property-type">string</span></dt>
+    <dd>When <code>status</code> is <code>"ok"</code>: always <code>"raw-sent"</code>.</dd>
+    <dt class="optional">errorCode <span class="property-type">string</span></dt>
+    <dd>When <code>status</code> is <code>"error"</code>: <code>CLIENT_NOT_FOUND</code>, <code>RAW_MODE_DISABLED</code>, or <code>RAW_FRAME_INVALID</code>.</dd>
+    <dt class="optional">errorText <span class="property-type">string</span></dt>
+    <dd>When <code>status</code> is <code>"error"</code>: human-readable description of the error.</dd>
+  </dl>
+</script>

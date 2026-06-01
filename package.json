@@ -1,0 +1,47 @@
+{
+  "name": "node-red-contrib-ax25",
+  "version": "1.0.0",
+  "description": "Node-RED nodes for AX.25 connectivity and tooling",
+  "main": "nodes/agwpe-client.js",
+  "license": "MIT",
+  "keywords": [
+    "node-red",
+    "agwpe",
+    "ax25",
+    "aprs",
+    "packet-radio"
+  ],
+    "author": {
+    "name": "Robert Ambrose",
+    "email": "npm@muttsoft.com",
+    "url": "https://github.com/n7get/node-red-contrib-ax25"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "test": "mocha --require test/setup.js 'test/**/*.spec.js'",
+    "lint": "node -e \"console.log('lint placeholder')\""
+  },
+  "dependencies": {},
+  "devDependencies": {
+    "mocha": "^10.7.3",
+    "node-red": "^3.1.9",
+    "node-red-node-test-helper": "^0.3.3"
+  },
+  "node-red": {
+    "nodes": {
+      "agwpe-client": "nodes/agwpe-client.js",
+      "connect": "nodes/connect.js",
+      "send": "nodes/send.js",
+      "disconnect": "nodes/disconnect.js",
+      "ui-in": "nodes/ui-in.js",
+      "ui-out": "nodes/ui-out.js",
+      "monitor-in": "nodes/monitor-in.js",
+      "raw-in": "nodes/raw-in.js",
+      "raw-out": "nodes/raw-out.js",
+      "decode": "nodes/decode.js",
+      "encode": "nodes/encode.js"
+    }
+  }
+}

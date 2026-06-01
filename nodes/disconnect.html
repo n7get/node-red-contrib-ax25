@@ -1,0 +1,55 @@
+<script type="text/javascript">
+RED.nodes.registerType("disconnect", {
+  category: "agwpe",
+  color: "#d4edda",
+  defaults: {
+    name: { value: "" }
+  },
+  inputs: 1,
+  outputs: 1,
+  outputLabels: ["events"],
+  icon: "font-awesome/fa-sign-out",
+  label: function () {
+    return this.name || "disconnect";
+  }
+});
+</script>
+
+<script type="text/html" data-template-name="disconnect">
+  <div class="form-row">
+    <label for="node-input-name"><i class="fa fa-tag"></i> Name</label>
+    <input type="text" id="node-input-name" />
+  </div>
+</script>
+
+<script type="text/html" data-help-name="disconnect">
+  <p>Initiates a graceful disconnect for an AX.25 connected session.</p>
+
+  <h3>Input</h3>
+  <dl class="message-properties">
+    <dt>sessionId <span class="property-type">string</span></dt>
+    <dd>Session to disconnect.</dd>
+  </dl>
+
+  <h3>Outputs</h3>
+  <ol class="node-ports">
+    <li>Events
+      <dl class="message-properties">
+        <dt>status <span class="property-type">string</span></dt>
+        <dd><code>"ok"</code> on success; <code>"error"</code> on error.</dd>
+        <dt>event <span class="property-type">string</span></dt>
+        <dd>When <code>status</code> is <code>"ok"</code>: <code>disconnecting</code>.</dd>
+        <dt>sessionId <span class="property-type">string</span></dt>
+        <dd>Identifies the session.</dd>
+        <dt class="optional">errorCode <span class="property-type">string</span></dt>
+        <dd>When <code>status</code> is <code>"error"</code>: <code>SESSION_NOT_FOUND</code>.</dd>
+        <dt class="optional">errorText <span class="property-type">string</span></dt>
+        <dd>When <code>status</code> is <code>"error"</code>: human-readable description of the error.</dd>
+      </dl>
+    </li>
+  </ol>
+
+  <h3>Details</h3>
+  <p>Emits <code>disconnecting</code> immediately. The <code>disconnected</code> event fires on the
+  originating <b>Connect</b> node's event output once the TNC confirms with a <code>d</code> frame.</p>
+</script>

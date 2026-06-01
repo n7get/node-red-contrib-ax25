@@ -1,0 +1,107 @@
+[
+    {
+        "id": "f1e3c30bea1bbe94",
+        "type": "subflow",
+        "name": "Bye",
+        "info": "",
+        "category": "",
+        "in": [
+            {
+                "x": 80,
+                "y": 120,
+                "wires": [
+                    {
+                        "id": "0813fedcec47e075"
+                    }
+                ]
+            }
+        ],
+        "out": [],
+        "env": [],
+        "meta": {},
+        "color": "#DDAA99"
+    },
+    {
+        "id": "0813fedcec47e075",
+        "type": "function",
+        "z": "f1e3c30bea1bbe94",
+        "name": "B",
+        "func": "\"use strict\";\n\nif (!msg.sessionId) {\n  const errorCode = 'NO_SESSION_ID';\n  const errorText = \"sessionID not found\";\n\n  node.error(`[${errorCode}] ${errorText}`);\n\n  return [{\n    status: 'error',\n    errorCode,\n    errorText,\n    msg,\n  }, null];\n}\n\nreturn [null, {\n    sessionId: msg.sessionId,\n    command: 'send',\n    payload: 'B',\n  timeout: 30000,\n}];\n",
+        "outputs": 2,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 210,
+        "y": 120,
+        "wires": [
+            [
+                "637170b1c7227488"
+            ],
+            [
+                "1e49e3218b1dd308"
+            ]
+        ]
+    },
+    {
+        "id": "1e49e3218b1dd308",
+        "type": "send",
+        "z": "f1e3c30bea1bbe94",
+        "name": "",
+        "timeout": "",
+        "waitFor": "",
+        "x": 390,
+        "y": 160,
+        "wires": [
+            [
+                "e3ab85e4461b92a5"
+            ],
+            [
+                "fed58202ceb48e13"
+            ]
+        ]
+    },
+    {
+        "id": "e3ab85e4461b92a5",
+        "type": "function",
+        "z": "f1e3c30bea1bbe94",
+        "name": "check error",
+        "func": "\"use strict\";\n\nif (msg.status === 'error') {\n    node.error(`[${msg.errorCode}] ${msg.errorText}`, msg);\n    return msg;\n}\nreturn null;",
+        "outputs": 1,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 610,
+        "y": 140,
+        "wires": [
+            [
+                "fed58202ceb48e13"
+            ]
+        ]
+    },
+    {
+        "id": "fed58202ceb48e13",
+        "type": "disconnect",
+        "z": "f1e3c30bea1bbe94",
+        "name": "",
+        "x": 810,
+        "y": 180,
+        "wires": [
+            []
+        ]
+    },
+    {
+        "id": "637170b1c7227488",
+        "type": "disconnect",
+        "z": "f1e3c30bea1bbe94",
+        "name": "",
+        "x": 410,
+        "y": 80,
+        "wires": [
+            []
+        ]
+    }
+]

@@ -1,0 +1,129 @@
+[
+    {
+        "id": "3c693657989a4c37",
+        "type": "subflow",
+        "name": "Get message list",
+        "info": "",
+        "category": "",
+        "in": [
+            {
+                "x": 91,
+                "y": 96,
+                "wires": [
+                    {
+                        "id": "9cf1412f3b5cb133"
+                    }
+                ]
+            }
+        ],
+        "out": [
+            {
+                "x": 660,
+                "y": 140,
+                "wires": [
+                    {
+                        "id": "9cf1412f3b5cb133",
+                        "port": 0
+                    },
+                    {
+                        "id": "7a0bf977aceb9b9d",
+                        "port": 0
+                    },
+                    {
+                        "id": "9bc838d18c1486f0",
+                        "port": 0
+                    }
+                ]
+            },
+            {
+                "x": 660,
+                "y": 260,
+                "wires": [
+                    {
+                        "id": "7a0bf977aceb9b9d",
+                        "port": 1
+                    }
+                ]
+            }
+        ],
+        "env": [],
+        "meta": {},
+        "color": "#DDAA99"
+    },
+    {
+        "id": "43f63a776d0f7144",
+        "type": "send",
+        "z": "3c693657989a4c37",
+        "name": "",
+        "timeout": "30000",
+        "waitFor": "^ENTER COMMAND",
+        "x": 221,
+        "y": 176,
+        "wires": [
+            [
+                "9bc838d18c1486f0"
+            ],
+            [
+                "7a0bf977aceb9b9d"
+            ]
+        ]
+    },
+    {
+        "id": "9cf1412f3b5cb133",
+        "type": "function",
+        "z": "3c693657989a4c37",
+        "name": "L",
+        "func": "\"use strict\";\n\nif (!msg.sessionId) {\n  const errorCode = 'NO_SESSION_ID';\n  const errorText = \"sessionID not found\";\n\n  node.error(`[${errorCode}] ${errorText}`);\n\n  return [{\n    status: 'error',\n    errorCode,\n    errorText,\n    msg,\n  }, null];\n}\n\nreturn [null, {\n  sessionId: msg.sessionId,\n  command: 'send',\n  payload: 'L',\n  timeout: 30000,\n}];\n",
+        "outputs": 2,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 221,
+        "y": 96,
+        "wires": [
+            [],
+            [
+                "43f63a776d0f7144"
+            ]
+        ]
+    },
+    {
+        "id": "7a0bf977aceb9b9d",
+        "type": "function",
+        "z": "3c693657989a4c37",
+        "name": "Create delete list",
+        "func": "\"use strict\";\n\nfunction kamParse(input) {\n  const regex = /^(\\d+)\\s+(\\S+)\\s+(\\d+)\\s+(\\S+)\\s+(\\S+)\\s+(\\S+)\\s+(\\S+)\\s+(.+)$/;\n\n  const output = input.map( l => {\n    const m = l.match(regex);\n\n    if (m) {\n        return {\n          line: m[0],\n          no: m[1],\n          type: m[2],\n          size: m[3],\n          dest: m[4],\n          src: m[5],\n          date: m[6],\n          time: m[7],\n          subject: m[8],\n        };\n      }\n  }).filter(Boolean);\n\n  return output;\n}\n\nif (!msg.match || !msg.match.startsWith('ENTER COMMAND')) {\n  const errorCode = 'MATCH_NOT_FOUND';\n  const errorText = \"Expected ENTER COMMAND\";\n  \n  node.error(`[${errorCode}] ${errorText}`, msg);\n\n  return [{\n    sessionId: msg.sessionId,\n    status: 'error',\n    errorCode,\n    errorText,\n  }, null];\n}\n\nconst list = kamParse(msg.payload);\n\nreturn [null, {\n  sessionId: msg.sessionId,\n  status: 'ok',\n  list,\n}];\n",
+        "outputs": 2,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 250,
+        "y": 260,
+        "wires": [
+            [],
+            []
+        ]
+    },
+    {
+        "id": "9bc838d18c1486f0",
+        "type": "function",
+        "z": "3c693657989a4c37",
+        "name": "check error",
+        "func": "\"use strict\";\n\nif (msg.status === 'error') {\n    node.error(`[${msg.errorCode}] ${msg.errorText}`, msg);\n    return msg;\n}\nreturn null;",
+        "outputs": 1,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 430,
+        "y": 160,
+        "wires": [
+            []
+        ]
+    }
+]

@@ -1,0 +1,128 @@
+<script type="text/javascript">
+RED.nodes.registerType("connect", {
+  category: "agwpe",
+  color: "#d4edda",
+  defaults: {
+    client: { value: "", type: "agwpe-client", required: true },
+    name: { value: "" },
+    source: { value: "" },
+    destination: { value: "" },
+    via: { value: "" },
+    mode: { value: "line" },
+    timeout: { value: 0 },
+    waitFor: { value: "" }
+  },
+  inputs: 1,
+  outputs: 2,
+  outputLabels: ["events", "data"],
+  icon: "font-awesome/fa-sign-in",
+  oneditprepare: function () {
+    $("#node-input-mode").val(this.mode || "line");
+  },
+  label: function () {
+    return this.name || "connect";
+  }
+});
+</script>
+
+<script type="text/html" data-template-name="connect">
+  <div class="form-row">
+    <label for="node-input-client"><i class="fa fa-server"></i> Client</label>
+    <input type="text" id="node-input-client" />
+  </div>
+  <div class="form-row">
+    <label for="node-input-name"><i class="fa fa-tag"></i> Name</label>
+    <input type="text" id="node-input-name" />
+  </div>
+  <div class="form-row">
+    <label for="node-input-source"><i class="fa fa-user"></i> Source</label>
+    <input type="text" id="node-input-source" placeholder="e.g. N0CALL-1 (overridden by msg.source)" />
+  </div>
+  <div class="form-row">
+    <label for="node-input-destination"><i class="fa fa-map-marker"></i> Destination</label>
+    <input type="text" id="node-input-destination" placeholder="e.g. N0CALL-1 (overridden by msg.destination)" />
+  </div>
+  <div class="form-row">
+    <label for="node-input-via"><i class="fa fa-random"></i> Via</label>
+    <input type="text" id="node-input-via" placeholder="e.g. WIDE1-1 WIDE2-1 (overridden by msg.via)" />
+  </div>
+  <div class="form-row">
+    <label for="node-input-mode"><i class="fa fa-list"></i> Mode</label>
+    <select id="node-input-mode">
+      <option value="line">line</option>
+      <option value="binary">binary</option>
+    </select>
+  </div>
+  <div class="form-row">
+    <label for="node-input-timeout"><i class="fa fa-clock-o"></i> Timeout (ms)</label>
+    <input type="number" id="node-input-timeout" placeholder="0 = disabled (overridden by msg.timeout)" min="0" style="width:auto" />
+  </div>
+  <div class="form-row">
+    <label for="node-input-waitFor"><i class="fa fa-search"></i> Wait For</label>
+    <input type="text" id="node-input-waitFor" placeholder="regex e.g. >$" />
+  </div>
+</script>
+
+<script type="text/html" data-help-name="connect">
+  <p>Initiates an AX.25 connected session.</p>
+  <p>Emits session lifecycle events on output 1 and inbound data from the remote station on output 2.</p>
+
+  <h3>Input</h3>
+  <dl class="message-properties">
+    <dt>destination <span class="property-type">string</span></dt>
+    <dd>Remote callsign to connect to (e.g. <code>"N0CALL-1"</code>).</dd>
+    <dt class="optional">source <span class="property-type">string</span></dt>
+    <dd>Local callsign. Overrides node config. Falls back to first callsign from the AGWPE client if neither is set.</dd>
+    <dt class="optional">via <span class="property-type">string | array</span></dt>
+    <dd>Digipeater path (e.g. <code>"WIDE1-1 WIDE2-1"</code> or an array). Overrides node config. When set, the AGWPE <code>'v'</code> frame is used instead of <code>'C'</code>.</dd>
+    <dt class="optional">sessionId <span class="property-type">string</span></dt>
+    <dd>Explicit session identifier. Auto-generated if omitted.</dd>
+    <dt class="optional">mode <span class="property-type">string</span></dt>
+    <dd><code>"line"</code> or <code>"binary"</code>. Overrides node config.</dd>
+    <dt class="optional">timeout <span class="property-type">number</span></dt>
+    <dd>Inactivity timeout in milliseconds. Overrides node config. A <code>timeout</code> event is emitted on output 1 if no data arrives within this window. Set to <code>0</code> to disable.</dd>
+    <dt class="optional">waitFor <span class="property-type">string</span></dt>
+    <dd>Regex pattern. Overrides node config. Lines are buffered until one matches, then all buffered lines are emitted as <code>msg.payload</code> (array) with the matching line in <code>msg.match</code>.</dd>
+  </dl>
+
+  <h3>Outputs</h3>
+  <ol class="node-ports">
+    <li>Events
+      <dl class="message-properties">
+        <dt>status <span class="property-type">string</span></dt>
+        <dd><code>"ok"</code> for normal events; <code>"error"</code> for error conditions.</dd>
+        <dt>event <span class="property-type">string</span></dt>
+        <dd>When <code>status</code> is <code>"ok"</code>: <code>connecting</code>, <code>connected</code>, <code>disconnecting</code>, or <code>disconnected</code>.</dd>
+        <dt>sessionId <span class="property-type">string</span></dt>
+        <dd>Identifies the session this event belongs to.</dd>
+        <dt class="optional">errorCode <span class="property-type">string</span></dt>
+        <dd>When <code>status</code> is <code>"error"</code>: <code>SESSION_ID_CONFLICT</code>, <code>CONNECT_INVALID</code>, <code>CLIENT_NOT_CONNECTED</code>, or <code>TIMEOUT</code> (inactivity timeout; <code>event</code> is also set to <code>"timeout"</code>).</dd>
+        <dt class="optional">errorText <span class="property-type">string</span></dt>
+        <dd>When <code>status</code> is <code>"error"</code>: human-readable description of the error.</dd>
+      </dl>
+    </li>
+    <li>Data
+      <dl class="message-properties">
+        <dt>event <span class="property-type">string</span></dt>
+        <dd>Always <code>"data"</code>.</dd>
+        <dt>payload <span class="property-type">string | Buffer | array</span></dt>
+        <dd>In line mode without <code>waitFor</code>: one string per line. With <code>waitFor</code>: array of lines buffered before the match. In binary mode: a Buffer.</dd>
+        <dt class="optional">match <span class="property-type">string</span></dt>
+        <dd>The line that triggered the <code>waitFor</code> pattern. Only present when <code>waitFor</code> is set and matched.</dd>
+        <dt>sessionId <span class="property-type">string</span></dt>
+        <dd>Identifies the session this data belongs to.</dd>
+      </dl>
+    </li>
+  </ol>
+
+  <h3>Details</h3>
+  <p>The node claims the data output for the session when the connect command is processed.
+  A <b>Send</b> node re-claims the output when it processes a <code>send</code> command,
+  routing subsequent inbound data through the Send node instead.</p>
+  <p>The <code>timeout</code> event follows the same output claim: it fires from the Connect
+  node when this node holds the output, or from the Send node if it has re-claimed it. Setting
+  <code>msg.timeout</code> on a Send command updates the timer <em>and</em> redirects future
+  timeout events to that Send node.</p>
+  <p><b>Source</b>, <b>Destination</b>, <b>Via</b>, <b>Mode</b>, <b>Timeout</b>, and <b>Wait For</b> can all be set on the node and overridden per-message via the corresponding <code>msg</code> properties.
+  Leave <b>Wait For</b> blank to emit one message per line.</p>
+</script>
