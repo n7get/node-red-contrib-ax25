@@ -8,13 +8,21 @@
     "node-red",
     "agwpe",
     "ax25",
-    "aprs",
+    "aprs", 
     "packet-radio"
   ],
-    "author": {
+  "author": {
     "name": "Robert Ambrose",
     "email": "npm@muttsoft.com",
     "url": "https://github.com/n7get/node-red-contrib-ax25"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/n7get/node-red-contrib-ax25.git"
+  },
+  "homepage": "https://github.com/n7get/node-red-contrib-ax25",
+  "bugs": {
+    "url": "https://github.com/n7get/node-red-contrib-ax25/issues"
   },
   "engines": {
     "node": ">=20"
