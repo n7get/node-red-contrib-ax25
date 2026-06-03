@@ -1,6 +1,6 @@
 {
   "name": "node-red-contrib-ax25",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "Node-RED nodes for AX.25 connectivity and tooling",
   "main": "nodes/agwpe-client.js",
   "license": "MIT",
@@ -8,7 +8,7 @@
     "node-red",
     "agwpe",
     "ax25",
-    "aprs", 
+    "aprs",
     "packet-radio"
   ],
   "author": {
