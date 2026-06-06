@@ -608,7 +608,7 @@ function cleanupActiveSessions(context) {
 }
 
 function scheduleReconnect(node, context) {
-  if (context._closing || !context.reconnect || context._testTransport) {
+  if (context._closing || context._manualClose || !context.reconnect || context._testTransport) {
     return;
   }
   if (context._reconnectTimer) {
@@ -738,7 +738,75 @@ module.exports = function (RED) {
     context.reconnectDelay = Number(config.reconnectDelay) || DEFAULT_RECONNECT_DELAY;
     context._testTransport = config._testTransport || null;
     context._closing = false;
+    context._manualClose = false;
     context._reconnectTimer = null;
+
+    node.instance.control = {
+      connect: function () {
+        if (context._reconnectTimer) {
+          clearTimeout(context._reconnectTimer);
+          context._reconnectTimer = null;
+        }
+        connectToTnc(node, context);
+      },
+      disconnect: function (cb) {
+        context._manualClose = true;
+        if (context._reconnectTimer) {
+          clearTimeout(context._reconnectTimer);
+          context._reconnectTimer = null;
+        }
+        cleanupActiveSessions(context);
+        if (context.transport && typeof context.transport.close === "function") {
+          context.transport.close(function () {
+            context.transport = null;
+            context.state = "disconnected";
+            node.status({ fill: "grey", shape: "ring", text: "disconnected" });
+            context.bus.emit("conn-lifecycle", { event: "transport-closed" });
+            context._manualClose = false;
+            if (typeof cb === "function") cb();
+          });
+        } else {
+          context.state = "disconnected";
+          node.status({ fill: "grey", shape: "ring", text: "disconnected" });
+          context._manualClose = false;
+          if (typeof cb === "function") cb();
+        }
+      },
+      setConfig: function (fields) {
+        if (fields.host !== undefined) context.host = String(fields.host);
+        if (fields.port !== undefined) context.port = Number(fields.port);
+        if (fields.callsigns !== undefined) context.callsigns = normalizeCallsigns(fields.callsigns);
+        if (fields.username !== undefined || fields.password !== undefined) {
+          const username = fields.username !== undefined ? fields.username : (context.auth ? context.auth.username : "");
+          const password = fields.password !== undefined ? fields.password : (context.auth ? context.auth.password : "");
+          context.auth = (username && password) ? { username, password } : null;
+        }
+      },
+      getConfig: function () {
+        return {
+          host: context.host,
+          port: context.port,
+          callsigns: context.callsigns.slice(),
+          username: context.auth ? context.auth.username : "",
+          state: context.state
+        };
+      },
+      getStatus: function () {
+        return {
+          state: context.state,
+          monitorEnabled: Boolean(context.monitorEnabled),
+          rawEnabled: Boolean(context.rawEnabled),
+          sessions: context.registry.list(context.instanceId).map(function (s) {
+            return {
+              sessionId: s.sessionId,
+              source: s.sourceCallsign,
+              destination: s.destinationCallsign,
+              state: s.state
+            };
+          })
+        };
+      }
+    };
 
     node.status({ fill: "grey", shape: "ring", text: "disconnected" });
 
