@@ -4,7 +4,7 @@
 
 A Node-RED contrib package that enables AX.25 packet radio connectivity through an AGWPE (AGW Packet Engine) server. Radio amateurs use it to integrate packet radio into Node-RED flows — connecting to BBSs, digipeaters, and other AX.25 stations.
 
-The package provides ten custom nodes covering connected sessions, unconnected UI frames, monitor mode, raw frames, and AX.25 encode/decode. It manages two distinct connection layers: one TCP connection to the AGWPE server, and multiple concurrent AX.25 protocol sessions to remote stations.
+The package provides eleven custom nodes covering connected sessions, unconnected UI frames, monitor mode, raw frames, AX.25 encode/decode, and runtime control of the AGWPE connection.
 
 ## Target users
 
@@ -20,7 +20,7 @@ Radio amateurs and enthusiasts running Node-RED who want to interact with AX.25 
 
 **Auto-reconnect is on by default.** When the AGWPE transport drops, all owned sessions are marked disconnected and the node automatically attempts to reconnect after a configurable delay (default 5000 ms). Auto-reconnect can be disabled via the "Auto-Reconnect" checkbox in the config editor. When disabled, all sessions fail and the flow must re-deploy or restart to reconnect.
 
-**`agwpe-client` is a config node.** It does not receive messages. All configuration (host, port, callsigns, auth, monitor/raw mode, reconnect settings) is set in the Node-RED editor. The connection is established automatically when the flow deploys. There is no `open`/`close` command interface.
+**`agwpe-client` is a config node.** It does not receive messages directly. All static configuration (host, port, callsigns, auth, monitor/raw mode, reconnect settings) is set in the Node-RED editor. The connection is established automatically when the flow deploys. Runtime control (connect, disconnect, config updates, status query) is available via the `agwpe-control` node.
 
 **Per-instance connection ownership.** Each `agwpe-client` node manages one AGWPE TCP connection. All downstream nodes (`conn-out`, `conn-in`, `ui-in`, `ui-out`, `monitor-in`, `raw-in`, `raw-out`) bind to a specific `agwpe-client` instance by `instanceId`. Cross-instance routing is not allowed.
 
@@ -55,6 +55,7 @@ Full contract details are in [README.md](README.md).
 | Node | Direction | Role |
 |------|-----------|------|
 | `agwpe-client` | config | Owns the AGWPE TCP connection; configured in the editor; connects on deploy |
+| `agwpe-control` | in + 1 out | Runtime control: connect, disconnect, set-config, get-config, get-status |
 | `connect` | in + 2 out | Establish an AX.25 session; output 1: lifecycle events; output 2: received data |
 | `send` | in + 2 out | Send data or disconnect on an established session; output 1: events; output 2: received data |
 | `ui-out` | data in | Encode and send AX.25 UI frames via AGWPE K raw transport |
@@ -78,7 +79,7 @@ Transport boundaries are mocked; no live AGWPE server is required for any test.
 ## Project layout
 
 ```text
-nodes/          runtime JS + editor HTML for all ten node types
+nodes/          runtime JS + editor HTML for all eleven node types
 lib/            shared internals (transport, router, registry, codec, segmentation)
 test/           contract / integration / unit test suites
 examples/       importable Node-RED example flows

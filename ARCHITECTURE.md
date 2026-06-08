@@ -10,7 +10,8 @@
                        │ msg
 ┌──────────────────────▼──────────────────────────────────────┐
 │  Node layer  (nodes/)                                       │
-│  agwpe-client · connect · send · disconnect                 │
+│  agwpe-client · agwpe-control                               │
+│  connect · send · disconnect                                │
 │  ui-out · ui-in · monitor-in · raw-out · raw-in             │
 │  decode · encode                                            │
 └──────┬───────────────────────────┬──────────────────────────┘
@@ -49,6 +50,20 @@
 | `message-utils.js` | `nowTimestamp()`, `makeMessageId()` — shared across nodes and lib |
 | `runtime-store.js` | In-memory store for per-instance context objects; also hosts a module-level `globalBus` (EventEmitter forwarding `conn-data`, `conn-lifecycle`, `conn-timeout-set` from all instances) and a `sessionIndex` map (`sessionId → instanceId`) that lets `send` resolve the correct instance at runtime without a static client reference |
 | `session-registry.js` | CRUD for `Ax25Session` records; indexes by `instanceId` + `sessionId` and by `serverSessionId` |
+
+## agwpe-control: runtime control interface
+
+`agwpe-client` exposes a `node.instance.control` object that `agwpe-control` calls at runtime:
+
+| Method | Description |
+|--------|-------------|
+| `connect()` | Trigger an immediate connection attempt |
+| `disconnect(cb)` | Close all sessions and the transport; set `_manualClose` to suppress auto-reconnect; call `cb` when done |
+| `setConfig(fields)` | Update `host`, `port`, `callsigns`, and/or `auth` on the live context |
+| `getConfig()` | Return `{ host, port, callsigns, username, state }` |
+| `getStatus()` | Return `{ state, monitorEnabled, rawEnabled, sessions[] }` where each session has `{ sessionId, source, destination, state }` |
+
+The `_manualClose` flag on the context prevents `scheduleReconnect` from firing after a `disconnect` command. It is cleared once the transport close completes, leaving auto-reconnect active again if a subsequent `connect` command triggers a fresh connection.
 
 ## Node internals pattern
 

@@ -62,7 +62,35 @@ Any software that exposes the AGWPE TCP interface works as a backend, including:
 | Auto-Reconnect | on | Automatically reconnect after a dropped connection |
 | Reconnect Delay | `5000` ms | Delay before each reconnect attempt |
 
-The `connect`, `ui-out`, `ui-in`, `monitor-in`, `raw-out`, and `raw-in` nodes each select which `agwpe-client` to bind to using a **Client** dropdown in their editor. The `send` node does not need a client selection — it gets the `agwpe-client` from the `sessionId`.
+The `connect`, `ui-out`, `ui-in`, `monitor-in`, `raw-out`, and `raw-in` nodes each select which `agwpe-client` to bind to using a **Client** dropdown in their editor. The `send` node does not need a client selection — it gets the `agwpe-client` from the `sessionId`. The `agwpe-control` node also selects an `agwpe-client` via its **Client** dropdown and sends control commands to it at runtime.
+
+---
+
+### agwpe-control
+
+Sends runtime control commands to an `agwpe-client` config node from a Node-RED flow.
+
+**Input:** set `msg.command` to one of the supported commands.
+
+| `msg.command` | Description | Additional `msg` fields |
+|---|---|---|
+| `"disconnect"` | Disconnect all active sessions and close the AGWPE connection (no auto-reconnect) | — |
+| `"connect"` | Connect to the AGWPE server using the current configuration | — |
+| `"set-config"` | Update one or more runtime configuration fields | `msg.host`, `msg.port`, `msg.callsigns`, `msg.username`, `msg.password` |
+| `"get-config"` | Retrieve the current configuration | — |
+| `"get-status"` | Retrieve the current runtime status | — |
+
+**Output:**
+
+All responses include `msg.status` (`"ok"` or `"error"`) and `msg.command`.
+
+- `get-config` and `set-config` include `msg.config` (`host`, `port`, `callsigns`, `username`, `state`).
+- `get-status` includes `msg.payload` (`state`, `monitorEnabled`, `rawEnabled`, `sessions`).
+- `disconnect` includes `msg.event: "disconnected"`.
+- `connect` includes `msg.event: "connecting"`.
+- Errors include `msg.errorCode` (`CLIENT_NOT_FOUND` or `UNKNOWN_COMMAND`) and `msg.errorText`.
+
+> **Note:** `set-config` updates runtime state only — changes are not persisted to the Node-RED flow definition. Use `connect` after `set-config` to apply a new host/port.
 
 ---
 
